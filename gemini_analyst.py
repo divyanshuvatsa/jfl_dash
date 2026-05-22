@@ -127,7 +127,7 @@ KEY DEADLINES:
   • Repayment end: 31-Mar-2039 (16-year door-to-door)
 
 MODEL INTEGRITY:
-  Validation Engine: {vs.get('Pass_Count', 120)}/{vs.get('Total_Checks', 120)} PASS — {vs.get('Overall_Status', '✅ ALL CHECKS PASS')}
+  Validation Engine: {vs.get('Pass_Count', 108)}/{vs.get('Total_Checks', 108)} PASS — {vs.get('Overall_Status', '✅ ALL CHECKS PASS')}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCTIONS

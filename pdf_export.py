@@ -301,8 +301,10 @@ def generate_board_memo(data: Dict[str, Any], cov_df: pd.DataFrame,
         f"is the economic representation.",
         f"<b>3. Bridge facility.</b> RBL Rs. 200 Cr is a 12-month BULLET maturing 13-Nov-2026. "
         f"Refinance plan required (Flag F-02).",
-        f"<b>4. Uncommitted exposure.</b> HSBC Rs. 1,000 Cr Combined Limit is uncommitted "
-        f"(Bucket 4); excluded from headline Sanctioned Debt KPI (Flag F-07).",
+        f"<b>4. HSBC realistic-exposure haircut.</b> HSBC Rs. 1,000 Cr Combined Limit (uncommitted per SL) "
+        f"is haircut by 80% and Rs. 200 Cr is reclassified into Bucket 1 (Sanctioned / FB Mains) as the "
+        f"realistic effective committed amount (Market-Practice MP-13; Management Flag F-18). "
+        f"Bank retains right to withdraw — Flag F-07.",
         f"<b>5. Validation status.</b> Model integrity verified — "
         f"{vs.get('Pass_Count', 0)}/{vs.get('Total_Checks', 0)} checks pass.",
     ]

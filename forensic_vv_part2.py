@@ -81,8 +81,8 @@ check(f"{len(parents)} parent facilities",         len(parents) > 10)
 # Sub-limits should NOT contribute to Sanctioned Debt KPI
 sub_sanc_total = sublimits["Sanction_INR"].sum()
 parent_sanc_b1b2 = parents[parents["Bucket"].isin([1, 2])]["Sanction_INR"].sum()
-check(f"Parent-only B1+B2 sum = ₹4,466 Cr (sub-limits not included)",
-       abs(parent_sanc_b1b2 - 4466) < 1, f"got {parent_sanc_b1b2}")
+check(f"Parent-only B1+B2 sum = ₹4,666 Cr (sub-limits not included; HSBC ₹200 in B1)",
+       abs(parent_sanc_b1b2 - 4666) < 1, f"got {parent_sanc_b1b2}")
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -95,20 +95,28 @@ check(f"Hedge total = ₹{hedge_total:.0f} Cr matches Excel ₹75",
        abs(hedge_total - 75) < 1, f"got {hedge_total}")
 # Hedge should NOT contribute to Bucket1_Sanctioned_Debt
 check("Hedge not double-counted in B1+B2",
-       abs(parent_sanc_b1b2 - 4466) < 1)
+       abs(parent_sanc_b1b2 - 4666) < 1)
 
 
 # ═══════════════════════════════════════════════════════════════════════
-print("\n[C] UNCOMMITTED B4 (HSBC) — separate from Sanctioned Debt")
+print("\n[C] UNCOMMITTED B4 — empty after HSBC reclassification to B1 (MP-13/F-18)")
 # ═══════════════════════════════════════════════════════════════════════
+# HSBC was reclassified from Bucket 4 (Uncommitted Memo) into Bucket 1 (FB Mains)
+# at ₹200 Cr post 20% haircut on ₹1,000 Cr face value (see Market-Practice MP-13
+# and Management Flag F-18). After this reclassification, Bucket 4 should be empty.
 b4 = fm[fm["Bucket"] == 4]
-check(f"{len(b4)} Bucket-4 facility (HSBC)", len(b4) >= 1)
+check(f"{len(b4)} Bucket-4 facility (B4 emptied after HSBC reclass)", len(b4) == 0)
 b4_total = b4["Sanction_INR"].sum()
-check(f"B4 total = ₹{b4_total:.0f} Cr matches Excel ₹1,000",
-       abs(b4_total - 1000) < 1)
-# Should NOT be in B1+B2 sum
-check("B4 not in Sanctioned Debt (B1+B2)",
-       abs(parent_sanc_b1b2 - 4466) < 1)
+check(f"B4 total = ₹{b4_total:.0f} Cr matches Excel ₹0 (HSBC moved to B1)",
+       abs(b4_total - 0) < 1)
+# HSBC ₹200 Cr now sits IN B1, not separate from it
+hsbc_b1 = fm[(fm["Lender"] == "HSBC") & (fm["Bucket"] == 1)]
+hsbc_b1_total = hsbc_b1["Sanction_INR"].sum()
+check(f"HSBC ₹{hsbc_b1_total:.0f} Cr in B1 (post 20% haircut on ₹1,000 face)",
+       abs(hsbc_b1_total - 200) < 1, f"got {hsbc_b1_total}")
+# B1+B2 sum now INCLUDES HSBC ₹200 — consistent with new Sanctioned Debt ₹4,666
+check("B1+B2 = ₹4,666 (incl HSBC ₹200 post-reclass)",
+       abs(parent_sanc_b1b2 - 4666) < 1)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -117,7 +125,7 @@ print("\n[D] ICICI TL TAKEOVER reconciliation")
 t = data["totals"]
 diff = t["Bucket1_Sanctioned_Debt"] - t["ICICI_TL_Takeover"] - t["Adjusted_Consortium"]
 check(f"Sanctioned − ICICI TL = Adjusted Consortium ({diff:.0f} diff)",
-       abs(diff) < 1, f"4466 - 840 - 3626 = {diff}")
+       abs(diff) < 1, f"4666 - 840 - 3826 = {diff}")
 # ICICI TL takeover row in Facility Master
 icici_tl = fm[fm["Lender"] == "ICICI Bank (TL)"]
 check(f"ICICI Bank (TL) has {len(icici_tl)} facility line(s)",
@@ -219,9 +227,9 @@ try:
 except ImportError:
     # pypdf is optional dependency for testing; fall back to substring search
     pdf_text = pdf.decode("latin-1", errors="ignore")
-check("PDF embeds 4,466 (Sanctioned Debt)",       "4,466" in pdf_text)
-check("PDF embeds 3,626 (Adjusted Consortium)",   "3,626" in pdf_text)
-check("PDF embeds WAC ~8.62%",                   "8.62%" in pdf_text or "8.6%" in pdf_text)
+check("PDF embeds 4,666 (Sanctioned Debt)",       "4,666" in pdf_text)
+check("PDF embeds 3,826 (Adjusted Consortium)",   "3,826" in pdf_text)
+check("PDF embeds WAC ~9.15%",                   "9.15%" in pdf_text or "9.1%" in pdf_text)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -408,15 +416,17 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-print("\n[N] MANAGEMENT FLAGS — F-01..F-15 (F-11 retired as duplicate) all loaded")
+print("\n[N] MANAGEMENT FLAGS — F-01..F-18 all loaded (post-HSBC reclass added F-18)")
 # ═══════════════════════════════════════════════════════════════════════
 mf = data["management_flags"]
-# F-11 was retired as a duplicate of F-01; the active register is 14 flags
-expected_flags = [f"F-{i:02d}" for i in range(1, 16) if i != 11]
+# Active register is now 18 flags (F-01..F-18). F-11 is included; F-16/F-17 added
+# during Indian Bank rate fix, F-18 added during HSBC ÷5 reclassification (MP-13).
+expected_flags = [f"F-{i:02d}" for i in range(1, 19)]
 loaded = mf["Flag"].tolist()
 for f in expected_flags:
     check(f"  {f} loaded", f in loaded)
-check("F-11 correctly retired (not in register)", "F-11" not in loaded)
+check(f"Total flags loaded = 18 (Indian Bank rate F-16/F-17 + HSBC haircut F-18 added)",
+       len(loaded) == 18, f"got {len(loaded)}")
 
 
 # ═══════════════════════════════════════════════════════════════════════

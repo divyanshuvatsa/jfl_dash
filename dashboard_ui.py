@@ -5,7 +5,7 @@ Mirrors the JCL reference architecture, adapted for:
   - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
   - 7 term loans (vs 3)
   - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
-  - 14 Management Flags + 120-check Validation & Integrity
+  - 18 Management Flags + 108-check Validation & Integrity
 """
 
 from __future__ import annotations
@@ -123,8 +123,8 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
 - 44 active covenants (FY29 TEV projected)
 - Repayment & Interest schedules (7 TLs)
 - 5-bucket totals (B1/B2/B3/B4/Hedge) + B0 sub-limits
-- 14 Management Flags
-- 120 Validation & Integrity checks (30 cross-source + 90 internal VJF)
+- 18 Management Flags
+- 108 Validation & Integrity checks (24 cross-source + 84 internal VJF)
 
 **Edit the Excel → Reload → everything updates.**
 """)
@@ -283,8 +283,9 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
 
     # ─── Five-bucket KPIs (row 1) ──────────────────────────────
     render_tab_header("AT A GLANCE", "Five-Bucket View",
-                       "B1+B2 = Sanctioned Debt. B3 FD-backed and B4 Uncommitted tracked separately. "
-                       "ICICI TL takeover ₹840 Cr reduces gross Sanctioned to Adjusted Consortium ₹3,626 Cr.")
+                       "B1+B2 = Sanctioned Debt. B3 FD-backed tracked separately; B4 emptied after HSBC "
+                       "reclassification to B1 per MP-13/F-18. "
+                       "ICICI TL takeover ₹840 Cr reduces gross Sanctioned to Adjusted Consortium ₹3,826 Cr.")
     fm_count = len(data["facility_master"])
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -392,7 +393,7 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
     # ─── Composition stacked ───────────────────────────────────
     render_tab_header("COMPOSITION", "Each Lender's Sanctioned Capacity Mix",
                        "How each lender's exposure splits across Term Loans, WC FB, and NFB umbrellas. "
-                       "Bars sum to the headline ₹4,466 Cr Sanctioned Debt.")
+                       "Bars sum to the headline ₹4,666 Cr Sanctioned Debt.")
     render_lender_composition_stacked(data)
 
     # ─── Cost contribution ────────────────────────────────────
@@ -1245,7 +1246,7 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
             gemini_prompts = [
                 "Summarize the top 3 risks in this portfolio and recommend mitigations.",
                 "If RBL's ₹200 Cr bullet can't be refinanced, what's the financial impact?",
-                "Compare our debt cost (8.62% WAC) to typical Indian steel sector benchmarks.",
+                "Compare our debt cost (9.15% WAC) to typical Indian steel sector benchmarks.",
                 "Draft a 1-page board memo on covenant compliance for the next review meeting.",
                 "What questions should I prepare for our next consortium meeting with UBI?",
                 "How would a 200 bps rate hike change our debt service profile?",

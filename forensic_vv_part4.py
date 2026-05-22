@@ -148,13 +148,13 @@ print("\n[5] AI Q&A — returns SPECIFIC facts, not just non-empty")
 # Each known question should return specific quantitative content
 test_cases = [
     ("What is our weighted average cost of debt?",
-     ["8.62%", "WAC", "Weighted"]),
+     ["9.15%", "WAC", "Weighted"]),
     ("Which is our most expensive facility?",
      ["YES Bank", "9.55%", "Rate"]),
     ("Give me a 5-point summary for the board.",
-     ["4,466", "8.62%", "354", "Sanctioned"]),
+     ["4,666", "9.15%", "393", "Sanctioned"]),
     ("Explain the ICICI TL Takeover treatment.",
-     ["840", "3,626", "Takeover", "Adjusted"]),
+     ["840", "3,826", "Takeover", "Adjusted"]),
     ("Why is the FY25 covenant compliance only 30%?",
      ["pre-COD", "EBITDA", "negative", "FY29"]),
 ]
@@ -265,9 +265,9 @@ check(f"All statuses in valid set ({st_values})",
 # ═══════════════════════════════════════════════════════════════════════
 print("\n[11] VALIDATION ENGINE — no double counting")
 # ═══════════════════════════════════════════════════════════════════════
-# The 120-check Validation Engine is stored across TWO blocks in Excel:
-#   - validation_engine (90 internal VJF checks, IDs starting "VJF")
-#   - validation_cross_source (30 cross-source DI/FI/XR/SL/AT/REC/SI/v7 checks)
+# The 108-check Validation Engine is stored across TWO blocks in Excel:
+#   - validation_engine (84 internal VJF checks, IDs starting "VJF")
+#   - validation_cross_source (24 cross-source DI/FI/XR/SL/AT/REC/SI/v7 checks)
 # Their combined PASS count should equal the summary Pass_Count.
 ve = data["validation_engine"]
 ve_cs = data.get("validation_cross_source", pd.DataFrame())
@@ -307,10 +307,10 @@ try:
     pdf = generate_board_memo(data, cov, {"basis": "FY29E (TEV)"})
     reader = PdfReader(io.BytesIO(pdf))
     pdf_text = "\n".join(p.extract_text() for p in reader.pages)
-    for s, lbl in [("4,466", "Sanctioned Debt"), ("3,916", "FB Mains B1"),
+    for s, lbl in [("4,666", "Sanctioned Debt"), ("4,116", "FB Mains B1"),
                     ("550", "NFB Mains B2"), ("840", "ICICI Takeover"),
-                    ("3,626", "Adjusted Consortium"), ("354", "Annual Run-Rate"),
-                    ("8.62%", "WAC"), ("PASS", "Validation"), ("120", "Total checks")]:
+                    ("3,826", "Adjusted Consortium"), ("393", "Annual Run-Rate"),
+                    ("9.15%", "WAC"), ("PASS", "Validation"), ("108", "Total checks")]:
         check(f"  PDF embeds '{s}' ({lbl})", s in pdf_text)
 except ImportError:
     check("pypdf available", False, "install pypdf for proper PDF text extraction")

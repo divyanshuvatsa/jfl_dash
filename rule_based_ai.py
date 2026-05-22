@@ -7,10 +7,11 @@ JFL-specific themes (different from JCL):
   - Project is pre-COD (FY29 first covenant test)
   - 9 lenders, 44 facilities
   - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
-  - ICICI TL takeover ₹840 Cr → Adjusted Consortium Debt ₹3,626 Cr
+  - ICICI TL takeover ₹840 Cr → Adjusted Consortium Debt ₹3,826 Cr
+  - HSBC ₹200 Cr (post 20% haircut on ₹1,000 face) reclassified into B1 (MP-13/F-18)
   - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
-  - 14 Management Flags
-  - 120-check Validation & Integrity (30 cross-source + 90 internal VJF)
+  - 18 Management Flags
+  - 108-check Validation & Integrity (24 cross-source + 84 internal VJF)
 """
 
 from __future__ import annotations
@@ -322,7 +323,8 @@ def answer_board_summary(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     out = [f"**📋 JFL Debt Portfolio — 5-Point Board Summary**\n"]
     out.append(f"1. **Sanctioned Debt** = {_inr(t['Bucket1_Sanctioned_Debt'])} (B1 FB Mains "
                 f"{_inr(t['FB_Mains_B1'], 0)} + B2 NFB Mains {_inr(t['NFB_Mains_B2'], 0)}) across "
-                f"9 lenders (8 funded + HSBC uncommitted memo), {fm_count} facilities. "
+                f"9 lenders, {fm_count} facilities. HSBC ₹200 Cr (post 20% haircut on ₹1,000 face) "
+                f"reclassified into B1 per MP-13/F-18. "
                 f"ICICI TL takeover ₹840 Cr → "
                 f"**Adjusted Consortium Debt {_inr(t['Adjusted_Consortium'])}**.")
     out.append(f"2. **Annual Run-Rate** = {_inr(isum['Total_Interest_Commission'])} at "
@@ -380,7 +382,8 @@ def answer_icici_takeover(data: Dict[str, Any]) -> str:
         f"- less: ICICI TL takeover = ({_inr(t['ICICI_TL_Takeover'])})\n"
         f"- **Adjusted Consortium Debt = {_inr(t['Adjusted_Consortium'])}** — economic representation\n\n"
         f"The KPI labelled 'Adjusted Consortium' is what matters for credit-committee purposes; the "
-        f"₹4,466 Cr 'Sanctioned' figure is what sums to all signed facility letters. Validation Engine "
+        f"₹4,666 Cr 'Sanctioned' figure is what sums to all signed facility letters (incl. HSBC "
+        f"₹200 Cr post 20% haircut, reclassified to B1 per MP-13/F-18). Validation Engine "
         f"check VJF-18 / VJF-19 enforce this reconciliation."
     )
 

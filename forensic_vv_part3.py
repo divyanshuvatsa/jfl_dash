@@ -236,22 +236,26 @@ check(f"No negative interest in repayment schedule ({neg_int} rows)",
 
 
 # ═══════════════════════════════════════════════════════════════════════
-print("\n[H] HSBC B4 — uncommitted = 0 drawn")
+print("\n[H] HSBC — reclassified from B4 to B1 (post-MP-13 / F-18)")
 # ═══════════════════════════════════════════════════════════════════════
+# HSBC Combined Limit was moved from Bucket 4 (Uncommitted Memo) to Bucket 1
+# (FB Mains / Sanctioned) at ₹200 Cr post 20% haircut on ₹1,000 Cr face value.
+# Bucket 4 should therefore be empty; HSBC ₹200 Cr should be IN Bucket 1.
 hsbc_b4 = fm[(fm["Lender"] == "HSBC") & (fm["Bucket"] == 4)]
-check(f"HSBC has {len(hsbc_b4)} B4 row(s)",
-       len(hsbc_b4) >= 1)
-if len(hsbc_b4):
-    drawn = hsbc_b4["Effective_OS"].sum()
-    sanc = hsbc_b4["Sanction_INR"].sum()
-    # Per Excel design: uncommitted facility is modelled at max draw for planning
-    # (Flag F-07 documents that bank can cancel at discretion)
-    check(f"HSBC B4 O/S equals Sanction (₹{drawn} = ₹{sanc}) — Excel max-draw assumption",
-           abs(drawn - sanc) < 1)
-    # Critical: this O/S must NOT contribute to Bucket 1 Interest
+check(f"HSBC has 0 B4 row(s) (reclassified to B1 — MP-13)",
+       len(hsbc_b4) == 0, f"got {len(hsbc_b4)}")
+hsbc_b1 = fm[(fm["Lender"] == "HSBC") & (fm["Bucket"] == 1)]
+check(f"HSBC has {len(hsbc_b1)} B1 row(s) (Combined Limit reclassified here)",
+       len(hsbc_b1) == 1)
+if len(hsbc_b1):
+    hsbc_sanc = hsbc_b1["Sanction_INR"].sum()
+    check(f"HSBC B1 sanction = ₹{hsbc_sanc:.0f} Cr (= ₹1,000 face / 5)",
+           abs(hsbc_sanc - 200) < 1)
+    # HSBC's ₹200 Cr now contributes to Bucket 1 Interest at 9% (Mutually agreed)
+    # base rate → ~₹18 Cr. Total B1 Interest is therefore ₹376.611 Cr.
     isum_b1 = data["interest_summary"]["Bucket1_Interest"]
-    check(f"HSBC B4 not in Bucket 1 Interest (B1=₹{isum_b1:.2f})",
-           abs(isum_b1 - 337.696) < 0.01)
+    check(f"HSBC contributes to Bucket 1 Interest (B1=₹{isum_b1:.2f})",
+           abs(isum_b1 - 376.611) < 0.01)
 
 
 # ═══════════════════════════════════════════════════════════════════════

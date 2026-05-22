@@ -92,35 +92,36 @@ check("44 facilities", len(data["facility_master"]) == 44)
 check("≥44 covenants (audit)", len(data["covenants"]) >= 44)
 check("≥44 covenants (TEV)", len(data["covenants_tev"]) >= 44)
 check("9 lenders", len(data["lender_summary"]) == 9)
-check("14 Management Flags", len(data["management_flags"]) == 14)
+check("18 Management Flags", len(data["management_flags"]) == 18)
 check("64 repayment quarters", len(data["repayment_schedule"]) == 64)
 
 t = data["totals"]
-check("Sanctioned Debt = ₹4,466 Cr",       abs(t["Bucket1_Sanctioned_Debt"] - 4466) < 1,
+check("Sanctioned Debt = ₹4,666 Cr",       abs(t["Bucket1_Sanctioned_Debt"] - 4666) < 1,
        f"got {t['Bucket1_Sanctioned_Debt']}")
-check("FB Mains B1 = ₹3,916 Cr",           abs(t["FB_Mains_B1"] - 3916) < 1,
+check("FB Mains B1 = ₹4,116 Cr",           abs(t["FB_Mains_B1"] - 4116) < 1,
        f"got {t['FB_Mains_B1']}")
 check("NFB Mains B2 = ₹550 Cr",            abs(t["NFB_Mains_B2"] - 550) < 1,
        f"got {t['NFB_Mains_B2']}")
 check("NFB Contingent = ₹2,040 Cr",        abs(t["NFB_Contingent"] - 2040) < 1,
        f"got {t['NFB_Contingent']}")
 check("FD-Backed B3 = ₹150 Cr",            abs(t["FD_Backed_B3"] - 150) < 1)
-check("Uncommitted B4 = ₹1,000 Cr",        abs(t["Uncommitted_B4"] - 1000) < 1)
+check("Uncommitted B4 = ₹0 Cr (HSBC reclassified to B1 — MP-13)",
+                                            abs(t["Uncommitted_B4"] - 0) < 1)
 check("Hedge Memo = ₹75 Cr",                abs(t["Hedge_Memo"] - 75) < 1)
 check("ICICI TL Takeover = ₹840 Cr",        abs(t["ICICI_TL_Takeover"] - 840) < 1)
-check("Adjusted Consortium = ₹3,626 Cr",   abs(t["Adjusted_Consortium"] - 3626) < 1)
+check("Adjusted Consortium = ₹3,826 Cr",   abs(t["Adjusted_Consortium"] - 3826) < 1)
 
 isum = data["interest_summary"]
-check("Bucket 1 Interest = ₹337.696 Cr",  abs(isum["Bucket1_Interest"] - 337.696) < 0.01,
+check("Bucket 1 Interest = ₹376.611 Cr",  abs(isum["Bucket1_Interest"] - 376.611) < 0.01,
        f"got {isum['Bucket1_Interest']}")
 check("Bucket 2 Commission = ₹3.05 Cr",    abs(isum["Bucket2_Commission"] - 3.05) < 0.01)
 check("Bucket 3 Interest = ₹13.5 Cr",      abs(isum["Bucket3_Interest"] - 13.5) < 0.01)
-check("Total Run-Rate = ₹354.246 Cr",      abs(isum["Total_Interest_Commission"] - 354.246) < 0.01)
-check("WAC = 8.62%",                        abs(isum["Weighted_Avg_Cost"] - 0.0862) < 0.0005,
+check("Total Run-Rate = ₹393.161 Cr",      abs(isum["Total_Interest_Commission"] - 393.161) < 0.01)
+check("WAC = 9.15%",                        abs(isum["Weighted_Avg_Cost"] - 0.0915) < 0.0005,
        f"got {isum['Weighted_Avg_Cost']}")
 
 vs = data["validation_summary"]
-check("Validation 120 checks", vs["Total_Checks"] == 120)
+check("Validation 108 checks", vs["Total_Checks"] == 108)
 check("All checks PASS", vs["Pass_Count"] == vs["Total_Checks"])
 check("Zero critical FAIL", vs["Critical_Fail"] == 0)
 
@@ -181,14 +182,14 @@ check(f"{len(rating)} rating covenants resolved",
 # ─── PHASE 4: INTEREST RECOMPUTE ───────────────────────────────────
 print("\n[PHASE 4] Interest re-computation vs Excel scenarios")
 base_int = recompute_interest(data["facility_master"], data["benchmark_rates"], 0, 0, 0)
-check("Base B1 Interest = ₹337.696",  abs(base_int["Bucket1_Interest"] - 337.696) < 0.1,
+check("Base B1 Interest = ₹376.611",  abs(base_int["Bucket1_Interest"] - 376.611) < 0.1,
        f"got {base_int['Bucket1_Interest']}")
 
 stress_int = recompute_interest(data["facility_master"], data["benchmark_rates"], 100, 25, 10)
 check("Stress B1 Interest > Base",     stress_int["Bucket1_Interest"] > base_int["Bucket1_Interest"])
-check("Stress B1 ~ ₹420-430 Cr",
-       420 < stress_int["Bucket1_Interest"] < 430,
-       f"got {stress_int['Bucket1_Interest']} (Excel stress scenario ≈ 425.31)")
+check("Stress B1 = ₹470.87 Cr",
+       abs(stress_int["Bucket1_Interest"] - 470.867) < 0.5,
+       f"got {stress_int['Bucket1_Interest']} (Excel stress scenario = 470.867)")
 
 
 # ─── PHASE 5: VISUALIZATIONS MODULE ────────────────────────────────
@@ -218,7 +219,7 @@ except Exception as e:
 print("\n[PHASE 7] Snapshot capture & compare")
 clear_snapshots()
 snap_a = take_snapshot(data, fy29, "test-base")
-check("Snapshot A captured", snap_a["state"]["Sanctioned_Debt_B1B2"] == 4466)
+check("Snapshot A captured", snap_a["state"]["Sanctioned_Debt_B1B2"] == 4666)
 snap_b = take_snapshot(data, fy29_severe, "test-stress")
 check("Snapshot B captured", "covenant_actuals" in snap_b["state"])
 

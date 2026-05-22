@@ -318,10 +318,13 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
                        util_change_pct: float = 0) -> Dict[str, Any]:
     """Apply rate/spread/utilisation shocks and recompute annual cost per facility.
 
-    Mirrors Excel Scenario Analysis ground truth (verified Excel post-iteration-3):
-      Bucket 1 base interest    = ₹337.696 Cr
-      Stress (+100bps / +25bps / +10% util) → ₹425.31 Cr
-      Severe (+200bps / +50bps / +20% util) → ₹522.72 Cr
+    Mirrors Excel Scenario Analysis ground truth (verified Excel v11, post-HSBC
+    reclassification & ÷5 haircut):
+      Bucket 1 base interest    = ₹376.611 Cr (incl HSBC ₹200 Cr Combined Limit
+                                  at 9.00% = ₹18 Cr; HSBC carries Category=NFB
+                                  but Bucket=1 by reclassification — MP-13).
+      Stress (+100bps / +25bps / +10% util) → ₹470.867 Cr
+      Severe (+200bps / +50bps / +20% util) → ₹575.413 Cr
     """
     rate_shock = rate_shock_bps / 10000
     spread_shock = spread_shock_bps / 10000
@@ -352,14 +355,16 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
         else:
             shocked_rate = base_rate
 
-        # Bucket aggregation matching Excel Interest Summary logic:
-        # B1 = FB Mains (Term + WC FB) — utilisation factor applies
-        # B2 = NFB Mains (LC parents) — commission on sanctioned face, no util
-        # B3 = FD-Backed FB — already 100% utilised by structure, no util factor
-        # B4 = Uncommitted (HSBC) — tracked but not in run-rate by default
-        # H  = Hedge memo — excluded from cost
-        # 0  = Sub-limit — already covered by parent, excluded from cost
-        if bucket == 1 and category in ("FB", "FB-Term", "FB-FCY"):
+        # Bucket aggregation matching Excel Interest Summary SUMIF (D52/D53/D54):
+        # B1 = FB Mains (Term + WC FB) PLUS HSBC ₹200 Cr Combined Limit (Cat=NFB,
+        #      reclassified to B1 per MP-13). All B1 rows get utilisation factor.
+        # B2 = NFB Mains (LC parents — ICICI WC LC, HDFC LC) — commission on
+        #      sanctioned face, no util factor.
+        # B3 = FD-Backed FB — already 100% utilised by structure, no util factor.
+        # B4 = Uncommitted (post-HSBC reclassification: B4 is empty / ₹0).
+        # H  = Hedge memo — excluded from cost.
+        # 0  = Sub-limit — already covered by parent, excluded from cost.
+        if bucket == 1:
             stressed_os = eff_os * util_factor
             annual_cost = stressed_os * shocked_rate
             bucket1_int += annual_cost
@@ -385,11 +390,10 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
 
     total = bucket1_int + bucket2_comm + bucket3_int
 
-    # WAC of FB Economic Debt: blended rate on Bucket 1 only
-    fm_b1 = facility_master[
-        (facility_master["Bucket"] == 1) &
-        (facility_master["Category"].isin(["FB", "FB-Term", "FB-FCY"]))
-    ]
+    # WAC of FB Economic Debt: blended rate on Bucket 1 only (matches Excel
+    # Interest Schedule C59 = D52/C52, where C52 = SUMIF(Bucket=1) across all
+    # categories including HSBC NFB-Cat).
+    fm_b1 = facility_master[facility_master["Bucket"] == 1]
     b1_os_base = fm_b1["Effective_OS"].sum()
     b1_os_stressed = b1_os_base * util_factor
     wac = (bucket1_int / b1_os_stressed) if b1_os_stressed > 0 else 0
@@ -443,7 +447,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
     """Single entry point for the dashboard to obtain the active covenant view.
 
     When no stress is applied (default), this returns the Excel-stored Actual /
-    Status values — which are TEV-validated and audit-quality (120 PASS / 0 FAIL
+    Status values — which are TEV-validated and audit-quality (108 PASS / 0 FAIL
     in the Validation Engine).
 
     When stress is applied, the engine recomputes from the shocked financials.
@@ -519,7 +523,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
             return pd.DataFrame(rows)
 
     # ── Stress active — apply proportional shock to stored Excel baseline ──
-    # Rationale: Excel's stored Actual values are audit-quality (V&V 120/120 PASS).
+    # Rationale: Excel's stored Actual values are audit-quality (V&V 108/108 PASS).
     # The TEV-projected DSCR/ISCR/FACR etc. use a consultant-built formula that
     # we cannot exactly reproduce from raw financial inputs. So we use ratio
     # scaling: compute the SAME formula at stress=0 baseline AND under stress,

@@ -71,7 +71,9 @@ print("\n[1] LENDER SUMMARY ↔ FACILITY MASTER per-lender reconciliation")
 # ═══════════════════════════════════════════════════════════════════════
 fm = data["facility_master"]
 ls = data["lender_summary"]
-fm_b1 = fm[(fm["Bucket"] == 1) & (fm["Category"].isin(["FB", "FB-Term", "FB-FCY"]))]
+# Bucket 1 = all rows where Bucket=1 regardless of Category (post-HSBC reclass,
+# HSBC Combined Limit is Bucket=1 with Category=NFB — see MP-13/F-18).
+fm_b1 = fm[fm["Bucket"] == 1]
 fm_b2 = fm[(fm["Bucket"] == 2) & (fm["Category"] == "NFB")]
 fm_b1_per = fm_b1.groupby("Lender")["Sanction_INR"].sum()
 fm_b2_per = fm_b2.groupby("Lender")["Sanction_INR"].sum()
@@ -83,9 +85,9 @@ for _, r in ls.iterrows():
     check(f"  B2 {lender} ({r['NFB_Mains_B2']:.0f})",
           abs(r["NFB_Mains_B2"] - fm_b2_per.get(lender, 0)) < 1,
           f"FM={fm_b2_per.get(lender, 0)}")
-check("Grand Total B1 = ₹3,916 Cr", abs(fm_b1_per.sum() - 3916) < 1)
+check("Grand Total B1 = ₹4,116 Cr", abs(fm_b1_per.sum() - 4116) < 1)
 check("Grand Total B2 = ₹550 Cr",   abs(fm_b2_per.sum() - 550) < 1)
-check("Sanctioned Debt = ₹4,466 Cr", abs(data["totals"]["Bucket1_Sanctioned_Debt"] - 4466) < 1)
+check("Sanctioned Debt = ₹4,666 Cr", abs(data["totals"]["Bucket1_Sanctioned_Debt"] - 4666) < 1)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -100,8 +102,8 @@ check("B1 row-sum ↔ summary", abs(b1_sum - isum["Bucket1_Interest"]) < 0.5,
        f"row-sum={b1_sum} vs summary={isum['Bucket1_Interest']}")
 check("B2 row-sum ↔ summary", abs(b2_sum - isum["Bucket2_Commission"]) < 0.5)
 check("B3 row-sum ↔ summary", abs(b3_sum - isum["Bucket3_Interest"]) < 0.5)
-check("Total run-rate = ₹354.246 Cr",
-       abs(isum["Total_Interest_Commission"] - 354.246) < 0.01)
+check("Total run-rate = ₹393.161 Cr",
+       abs(isum["Total_Interest_Commission"] - 393.161) < 0.01)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -260,13 +262,14 @@ for i, label in enumerate(["Base", "Stress", "Severe"]):
 # ═══════════════════════════════════════════════════════════════════════
 print("\n[10] WAC CALCULATION")
 # ═══════════════════════════════════════════════════════════════════════
-# WAC = B1 Interest / B1 Effective O/S
-b1_os = fm[(fm["Bucket"] == 1) & (fm["Category"].isin(["FB", "FB-Term", "FB-FCY"]))]["Effective_OS"].sum()
+# WAC = B1 Interest / B1 Effective O/S (all Bucket=1 rows, matching Excel
+# Interest Schedule C59 formula. HSBC Combined Limit Bucket=1 Cat=NFB included.)
+b1_os = fm[fm["Bucket"] == 1]["Effective_OS"].sum()
 computed_wac = isum["Bucket1_Interest"] / b1_os if b1_os else 0
-check("B1 Effective O/S = ₹3,916 Cr", abs(b1_os - 3916) < 1, f"got {b1_os}")
+check("B1 Effective O/S = ₹4,116 Cr", abs(b1_os - 4116) < 1, f"got {b1_os}")
 check(f"Computed WAC matches stored WAC ({computed_wac:.4%} vs {isum['Weighted_Avg_Cost']:.4%})",
        abs(computed_wac - isum["Weighted_Avg_Cost"]) < 0.0005)
-check("WAC = 8.62%", abs(isum["Weighted_Avg_Cost"] - 0.0862) < 0.0005)
+check("WAC = 9.15%", abs(isum["Weighted_Avg_Cost"] - 0.0915) < 0.0005)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -285,11 +288,11 @@ check(f"FY29 Term Debt > 0 (post-COD)",
 
 
 # ═══════════════════════════════════════════════════════════════════════
-print("\n[12] LENDER COMPOSITION — totals tie to ₹4,466 Cr")
+print("\n[12] LENDER COMPOSITION — totals tie to ₹4,666 Cr")
 # ═══════════════════════════════════════════════════════════════════════
 ls_total = ls["Sanctioned_Debt"].sum()
 check(f"Lender Summary total = Sanctioned Debt KPI ({ls_total:.0f})",
-       abs(ls_total - 4466) < 1)
+       abs(ls_total - 4666) < 1)
 check(f"9 lenders in summary", len(ls) == 9)
 
 
@@ -323,17 +326,17 @@ print("\n[15] SNAPSHOTS — round-trip preserves state")
 # ═══════════════════════════════════════════════════════════════════════
 clear_snapshots()
 snap = take_snapshot(data, fy29, "test")
-check("Snapshot Sanctioned Debt = ₹4,466", abs(snap["state"]["Sanctioned_Debt_B1B2"] - 4466) < 1)
+check("Snapshot Sanctioned Debt = ₹4,666", abs(snap["state"]["Sanctioned_Debt_B1B2"] - 4666) < 1)
 check("Snapshot Compliant = 43",            snap["state"]["Compliant"] == 43)
-check("Snapshot WAC = 8.62%",              abs(snap["state"]["Weighted_Avg_Cost"] - 0.0862) < 0.0005)
+check("Snapshot WAC = 9.15%",              abs(snap["state"]["Weighted_Avg_Cost"] - 0.0915) < 0.0005)
 
 
 # ═══════════════════════════════════════════════════════════════════════
-print("\n[16] VALIDATION ENGINE — 120 / 0 / PASS")
+print("\n[16] VALIDATION ENGINE — 108 / 0 / PASS")
 # ═══════════════════════════════════════════════════════════════════════
 vs = data["validation_summary"]
-check("120 total checks",        vs["Total_Checks"] == 120)
-check("120 PASS",                vs["Pass_Count"] == 120)
+check("108 total checks",        vs["Total_Checks"] == 108)
+check("108 PASS",                vs["Pass_Count"] == 108)
 check("0 FAIL",                 vs["Fail_Count"] == 0)
 check("0 Critical FAIL",        vs["Critical_Fail"] == 0)
 check("Overall = PASS",         "PASS" in vs["Overall_Status"])

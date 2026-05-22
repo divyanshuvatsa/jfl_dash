@@ -12,8 +12,8 @@ Reads pre-computed values from the Excel:
   - Interest Schedule (per-facility annual cost)
   - Scenario Analysis (Base / Stress / Severe presets)
   - Renewal & Review Calendar
-  - Management Flags (F-01..F-15 (F-11 retired as duplicate))
-  - Validation & Integrity (120 integrity checks: 30 cross-source V&V + 90 internal VJF)
+  - Management Flags (F-01..F-18, incl. F-16/F-17 from Indian Bank rate fix, F-18 from HSBC haircut)
+  - Validation & Integrity (108 integrity checks: 24 cross-source V&V + 84 internal VJF)
   - Security & Charge Matrix
   - Debt Pricing Table
 
@@ -472,29 +472,29 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
     # Verified Excel layout — Section B starts at Excel row 18 ("B.  KEY KPIs"),
     # header at row 19, values at rows 20-28 in column B (iloc col 1).
     # iloc is 0-indexed when header=None, so Excel row 20 = iloc[19].
-    #   iloc[19, 1] = Sanctioned (B1+B2) = 4466
-    #   iloc[20, 1] = FB Mains B1        = 3916
+    #   iloc[19, 1] = Sanctioned (B1+B2) = 4666 (incl HSBC ₹200 in B1 — MP-13)
+    #   iloc[20, 1] = FB Mains B1        = 4116 (3,916 base + HSBC ₹200)
     #   iloc[21, 1] = NFB Mains B2       = 550
     #   iloc[22, 1] = NFB Contingent     = 2040
     #   iloc[23, 1] = FD-Backed B3       = 150
-    #   iloc[24, 1] = Uncommitted B4     = 1000
+    #   iloc[24, 1] = Uncommitted B4     = 0 (HSBC reclassified to B1)
     #   iloc[25, 1] = Hedge Memo         = 75
     #   iloc[26, 1] = ICICI TL Takeover  = 840
-    #   iloc[27, 1] = Adjusted Consortium= 3626
+    #   iloc[27, 1] = Adjusted Consortium= 3826 (4,666 − 840 takeover)
     out["totals"] = {
         # JCL-compatible aliases — populate the same keys the JCL UI expects
-        "Bucket1_Sanctioned_Debt": _safe_float(ls.iloc[19, 1]),  # 4466
+        "Bucket1_Sanctioned_Debt": _safe_float(ls.iloc[19, 1]),  # 4666
         "Bucket2_NFB_Contingent":  _safe_float(ls.iloc[22, 1]),  # 2040
         "Bucket3_Separate":        _safe_float(ls.iloc[23, 1]),  # 150
         # JFL-specific extras
-        "FB_Mains_B1":             _safe_float(ls.iloc[20, 1]),  # 3916
+        "FB_Mains_B1":             _safe_float(ls.iloc[20, 1]),  # 4116
         "NFB_Mains_B2":            _safe_float(ls.iloc[21, 1]),  # 550
         "NFB_Contingent":          _safe_float(ls.iloc[22, 1]),  # 2040
         "FD_Backed_B3":            _safe_float(ls.iloc[23, 1]),  # 150
-        "Uncommitted_B4":          _safe_float(ls.iloc[24, 1]),  # 1000
+        "Uncommitted_B4":          _safe_float(ls.iloc[24, 1]),  # 0
         "Hedge_Memo":              _safe_float(ls.iloc[25, 1]),  # 75
         "ICICI_TL_Takeover":       _safe_float(ls.iloc[26, 1]),  # 840
-        "Adjusted_Consortium":     _safe_float(ls.iloc[27, 1]),  # 3626
+        "Adjusted_Consortium":     _safe_float(ls.iloc[27, 1]),  # 3826
     }
 
     # Lender concentration (per-lender shares of Sanctioned Debt)
@@ -542,20 +542,20 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
     #   Row 51 = column headers (Bucket | Description | Eff O/S | Int/Comm | Notes)
     #   Row 52 = Bucket 1; Row 53 = Bucket 2; Row 54 = Bucket 3;
     #   Row 55 = TOTAL ECONOMIC RUN-RATE
-    #   Row 56 = Bucket 4 (HSBC uncommitted memo)
+    #   Row 56 = Bucket 4 (nil after HSBC reclassification to B1 — MP-13/F-18)
     #   Row 57 = Bucket 0 (sub-limits — informational only)
     #   Row 59 = WAC (col C / iloc col 2)
     # All Int/Comm values are in column D (iloc col 3).
     int_summary_raw = pd.read_excel(path, sheet_name="Interest Schedule",
                                      header=None, engine=_EXCEL_ENGINE)
     out["interest_summary"] = {
-        "Bucket1_Interest":         _safe_float(int_summary_raw.iloc[51, 3]),  # 337.696
+        "Bucket1_Interest":         _safe_float(int_summary_raw.iloc[51, 3]),  # 376.611
         "Bucket2_Commission":       _safe_float(int_summary_raw.iloc[52, 3]),  # 3.05
         "Bucket3_Interest":         _safe_float(int_summary_raw.iloc[53, 3]),  # 13.5
-        "Total_Interest_Commission":_safe_float(int_summary_raw.iloc[54, 3]),  # 354.246
-        "Bucket4_Theoretical":      _safe_float(int_summary_raw.iloc[55, 3]),  # 90
-        "Bucket0_Sublimit":         _safe_float(int_summary_raw.iloc[56, 3]),  # 253.4464
-        "Weighted_Avg_Cost":        _safe_float(int_summary_raw.iloc[58, 2]),  # 0.0862
+        "Total_Interest_Commission":_safe_float(int_summary_raw.iloc[54, 3]),  # 393.161
+        "Bucket4_Theoretical":      _safe_float(int_summary_raw.iloc[55, 3]),  # 0 (post-reclass)
+        "Bucket0_Sublimit":         _safe_float(int_summary_raw.iloc[56, 3]),  # 111.969
+        "Weighted_Avg_Cost":        _safe_float(int_summary_raw.iloc[58, 2]),  # 0.0915
     }
 
     # ─── Repayment Schedule (quarterly, 7 TLs) ──────────────────────────
@@ -701,14 +701,14 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
     out["management_flags"] = pd.DataFrame(mf_records)
 
     # ─── Validation & Integrity ─────────────────────────────────────────
-    # Verified Excel layout:
-    #   Section A (rows 5-34):  Cross-source V&V — 30 tests, header at row 4
-    #   Section B (rows 39-128): Internal VJF checks — 90 tests, header at row 38
-    #   Master Status (rows 131-137): Total / PASS / FAIL / Critical FAIL / Status
-    # Combined total: 120 integrity checks.
+    # Verified Excel layout (post-HSBC reclassification, v11):
+    #   Section A (rows 5-28):  Cross-source V&V — 24 tests, header at row 4 (iloc 3)
+    #   Section B (rows 32-115): Internal VJF checks — 84 tests, header at row 31 (iloc 30)
+    #   Master Status (rows 118-123): Total / PASS / FAIL / Critical FAIL / Pass Rate / Status
+    # Combined total: 108 integrity checks (24 cross-source + 84 internal VJF).
     # We read the VJF (internal) block which has the richer schema; the
     # cross-source V&V block has only Test ID / Result / Detail.
-    ve_raw = pd.read_excel(path, sheet_name="Validation & Integrity", header=37,
+    ve_raw = pd.read_excel(path, sheet_name="Validation & Integrity", header=30,
                             engine=_EXCEL_ENGINE)
     ve_records = []
     for _, r in ve_raw.iterrows():
@@ -748,16 +748,33 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         })
     out["validation_cross_source"] = pd.DataFrame(ve_cs_records)
 
-    # Master status summary — verified Excel: rows 132-137 (iloc 131-136)
+    # Master status summary — search for labels rather than hardcoded row positions.
+    # The block position has shifted across model versions; we locate it by finding
+    # the "Total Checks" label in column A and read forward.
     ve_full = pd.read_excel(path, sheet_name="Validation & Integrity", header=None,
                              engine=_EXCEL_ENGINE)
     try:
+        master_row = None
+        for i in range(len(ve_full)):
+            v = ve_full.iloc[i, 0]
+            if isinstance(v, str) and v.strip().lower() == "total checks":
+                master_row = i
+                break
+        if master_row is None:
+            raise ValueError("Master status block not found")
+        # Block layout (relative to "Total Checks" row):
+        #   row+0 = Total Checks
+        #   row+1 = PASS
+        #   row+2 = FAIL
+        #   row+3 = Critical FAIL
+        #   row+4 = Pass Rate (skip)
+        #   row+5 = Overall Status
         out["validation_summary"] = {
-            "Total_Checks":  int(_safe_float(ve_full.iloc[131, 1])),
-            "Pass_Count":    int(_safe_float(ve_full.iloc[132, 1])),
-            "Fail_Count":    int(_safe_float(ve_full.iloc[133, 1])),
-            "Critical_Fail": int(_safe_float(ve_full.iloc[134, 1])),
-            "Overall_Status":_safe_str(ve_full.iloc[136, 1], "✅ ALL CHECKS PASS"),
+            "Total_Checks":  int(_safe_float(ve_full.iloc[master_row + 0, 1])),
+            "Pass_Count":    int(_safe_float(ve_full.iloc[master_row + 1, 1])),
+            "Fail_Count":    int(_safe_float(ve_full.iloc[master_row + 2, 1])),
+            "Critical_Fail": int(_safe_float(ve_full.iloc[master_row + 3, 1])),
+            "Overall_Status":_safe_str(ve_full.iloc[master_row + 5, 1], "✅ ALL CHECKS PASS"),
         }
     except Exception:
         # Fallback: combine VJF count + cross-source count
