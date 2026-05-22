@@ -5,7 +5,7 @@ Mirrors the JCL reference architecture, adapted for:
   - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
   - 7 term loans (vs 3)
   - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
-  - 15 Management Flags + 120-check Validation & Integrity
+  - 14 Management Flags + 120-check Validation & Integrity
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import plotly.graph_objects as go
 from theme import LENDER_COLORS, STATUS_COLORS, CHART_LAYOUT, SEVERITY_COLORS
 from scenario_engine import resolve_covenants, recompute_interest, run_scenario
 import rule_based_ai as rba
+import gemini_analyst as gem
 from visualizations import (
     render_covenant_headroom_chart, render_facility_cost_chart,
     render_fb_rate_vs_wac_chart, render_lender_composition_stacked,
@@ -122,7 +123,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
 - 44 active covenants (FY29 TEV projected)
 - Repayment & Interest schedules (7 TLs)
 - 5-bucket totals (B1/B2/B3/B4/Hedge) + B0 sub-limits
-- 15 Management Flags
+- 14 Management Flags
 - 120 Validation & Integrity checks (30 cross-source + 90 internal VJF)
 
 **Edit the Excel → Reload → everything updates.**
@@ -1037,7 +1038,7 @@ def render_tab_flags_and_validation(data: Dict[str, Any]):
                            "Treasury / credit-committee items requiring decision, action, or "
                            "external verification.")
         c1, c2, c3, c4 = st.columns(4)
-        with c1: render_big_kpi("Total Flags", str(len(flags)), "F-01..F-15", color="#3B82F6")
+        with c1: render_big_kpi("Total Flags", str(len(flags)), "F-01..F-15 (F-11 retired as duplicate)", color="#3B82F6")
         with c2: render_big_kpi("Open", str(len(open_flags)),
                                   f"{len(crit_high)} High/Critical",
                                   color="#F59E0B" if len(crit_high) > 0 else "#10B981")
@@ -1118,7 +1119,7 @@ def render_tab_flags_and_validation(data: Dict[str, Any]):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 4 — AI ANALYST
+# TAB 4 — AI ANALYST  (Rule-Based + optional Gemini API)
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
     cov_df = resolve_covenants(data, controls["basis"],
@@ -1127,12 +1128,24 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
                                 interest_change_pct=0,
                                 debt_change_pct=controls["debt_change"])
 
-    render_tab_header("AI ANALYST", "Rule-Based Q&A",
-                       "Always-on, deterministic answers powered by live JFL Excel data. "
-                       "Adapted for JFL-specific themes: pre-COD context, ICICI takeover, "
-                       "dual covenant basis, 15 Management Flags.")
+    render_tab_header("AI ANALYST", "Ask Anything",
+                       "Two analyst modes available: a Rule-Based engine (free, instant, "
+                       "deterministic) and a Gemini-powered conversational analyst "
+                       "(bring your own API key).")
 
-    # ─── Proactive insight cards ─────────────────────────────
+    # ─── Mode toggle ─────────────────────────────────────────
+    mode = st.radio(
+        "Analyst mode",
+        ["🤖 Rule-Based (free, instant)", "✨ Gemini AI (bring your API key)"],
+        horizontal=True,
+        key="ai_mode",
+        help=("Rule-Based gives deterministic answers from 15 pre-built JFL templates. "
+              "Gemini AI sends your question + portfolio snapshot to Google's Gemini "
+              "API for free-form conversational analysis.")
+    )
+    st.markdown("---")
+
+    # ─── Proactive insight cards (shown in both modes) ────────
     st.markdown("#### 💡 Proactive Insights")
     insights = rba.get_proactive_insights(data, cov_df)
     cols = st.columns(2)
@@ -1143,41 +1156,154 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
                 <div class='insight-title'>{ins['icon']} {ins['title']}</div>
                 <div class='insight-body'>{ins['body']}</div></div>"""), unsafe_allow_html=True)
 
-    # ─── Suggested questions ─────────────────────────────────
-    st.markdown("#### 💬 Suggested Questions")
-    cols = st.columns(2)
-    for i, q in enumerate(rba.SUGGESTED_QUESTIONS):
-        with cols[i % 2]:
-            if st.button(q, key=f"rq_{i}", use_container_width=True):
-                resp = rba.answer_question(q, data, cov_df)
+    st.markdown("---")
+
+    # ════════════════════════════════════════════════════════════
+    # MODE A — RULE-BASED ANALYST
+    # ════════════════════════════════════════════════════════════
+    if mode.startswith("🤖"):
+        st.markdown("#### 💬 Suggested Questions")
+        st.caption("Click any question for an instant answer drawn directly from the verified Excel.")
+        cols = st.columns(2)
+        for i, q in enumerate(rba.SUGGESTED_QUESTIONS):
+            with cols[i % 2]:
+                if st.button(q, key=f"rq_{i}", use_container_width=True):
+                    resp = rba.answer_question(q, data, cov_df)
+                    if "ai_history" not in st.session_state:
+                        st.session_state.ai_history = []
+                    st.session_state.ai_history.append({"role": "user", "content": q})
+                    st.session_state.ai_history.append({"role": "assistant", "content": resp})
+                    st.rerun()
+
+        # Free-form input
+        user_input = st.chat_input("Ask anything about the JFL portfolio…")
+        if user_input:
+            resp = rba.answer_question(user_input, data, cov_df)
+            if "ai_history" not in st.session_state:
+                st.session_state.ai_history = []
+            st.session_state.ai_history.append({"role": "user", "content": user_input})
+            st.session_state.ai_history.append({"role": "assistant", "content": resp})
+            st.rerun()
+
+    # ════════════════════════════════════════════════════════════
+    # MODE B — GEMINI AI ANALYST
+    # ════════════════════════════════════════════════════════════
+    else:
+        st.markdown("#### ✨ Gemini AI Conversational Analyst")
+
+        # ─── API key + model selector (collapsed by default once configured)
+        key_configured = bool(st.session_state.get("gemini_api_key", "").strip())
+        with st.expander(
+            "🔑 API Configuration" + (" — ✅ configured" if key_configured else " — ⚠ not configured"),
+            expanded=not key_configured
+        ):
+            st.markdown(
+                "**Bring your own Gemini API key.** Get a free key at "
+                "[aistudio.google.com/apikey](https://aistudio.google.com/apikey). "
+                "Your key is held only in this browser session and is **never** "
+                "saved to disk or transmitted anywhere except Google's API endpoint."
+            )
+
+            colk1, colk2 = st.columns([3, 2])
+            with colk1:
+                api_key = st.text_input(
+                    "Gemini API Key",
+                    value=st.session_state.get("gemini_api_key", ""),
+                    type="password",
+                    key="gemini_api_key_input",
+                    placeholder="AIzaSy…",
+                    help="Starts with 'AIza' and is ~39 characters.",
+                )
+                if api_key != st.session_state.get("gemini_api_key", ""):
+                    st.session_state.gemini_api_key = api_key
+            with colk2:
+                model_choices = {label: mid for mid, label in gem.GEMINI_MODELS}
+                model_label = st.selectbox(
+                    "Model",
+                    options=list(model_choices.keys()),
+                    index=0,
+                    key="gemini_model_selector",
+                )
+                st.session_state.gemini_model = model_choices[model_label]
+
+            # Validate key format
+            if api_key:
+                if gem.is_valid_key_format(api_key):
+                    st.success("✅ Key format looks valid. Ready to chat.")
+                else:
+                    st.warning("⚠ Key doesn't look like a Gemini API key (should start with 'AIza').")
+
+        if not st.session_state.get("gemini_api_key", "").strip():
+            st.info(
+                "👆 **Enter your Gemini API key above** to start chatting. "
+                "Don't have one? It's free for casual use — sign up at "
+                "[aistudio.google.com](https://aistudio.google.com/apikey)."
+            )
+        else:
+            # ─── Quick-start suggested prompts for Gemini
+            st.markdown("**Quick-start prompts** (click to send):")
+            gemini_prompts = [
+                "Summarize the top 3 risks in this portfolio and recommend mitigations.",
+                "If RBL's ₹200 Cr bullet can't be refinanced, what's the financial impact?",
+                "Compare our debt cost (8.62% WAC) to typical Indian steel sector benchmarks.",
+                "Draft a 1-page board memo on covenant compliance for the next review meeting.",
+                "What questions should I prepare for our next consortium meeting with UBI?",
+                "How would a 200 bps rate hike change our debt service profile?",
+            ]
+            gpcols = st.columns(2)
+            for i, p in enumerate(gemini_prompts):
+                with gpcols[i % 2]:
+                    if st.button(p, key=f"gp_{i}", use_container_width=True):
+                        with st.spinner("✨ Gemini is thinking…"):
+                            ok, resp = gem.ask_gemini(
+                                st.session_state.gemini_api_key,
+                                st.session_state.get("gemini_model", gem.DEFAULT_MODEL),
+                                data, cov_df, p,
+                                history=st.session_state.get("ai_history", [])
+                            )
+                        if "ai_history" not in st.session_state:
+                            st.session_state.ai_history = []
+                        st.session_state.ai_history.append({"role": "user", "content": p})
+                        st.session_state.ai_history.append({
+                            "role": "assistant",
+                            "content": ("**✨ Gemini:**\n\n" + resp) if ok else resp
+                        })
+                        st.rerun()
+
+            # ─── Free-form Gemini chat
+            user_input = st.chat_input("Ask Gemini anything about the JFL portfolio…")
+            if user_input:
+                with st.spinner("✨ Gemini is thinking…"):
+                    ok, resp = gem.ask_gemini(
+                        st.session_state.gemini_api_key,
+                        st.session_state.get("gemini_model", gem.DEFAULT_MODEL),
+                        data, cov_df, user_input,
+                        history=st.session_state.get("ai_history", [])
+                    )
                 if "ai_history" not in st.session_state:
                     st.session_state.ai_history = []
-                st.session_state.ai_history.append({"role": "user", "content": q})
-                st.session_state.ai_history.append({"role": "assistant", "content": resp})
+                st.session_state.ai_history.append({"role": "user", "content": user_input})
+                st.session_state.ai_history.append({
+                    "role": "assistant",
+                    "content": ("**✨ Gemini:**\n\n" + resp) if ok else resp
+                })
                 st.rerun()
 
-    # ─── Free-form input ─────────────────────────────────────
-    user_input = st.chat_input("Ask anything about the JFL portfolio…")
-    if user_input:
-        resp = rba.answer_question(user_input, data, cov_df)
-        if "ai_history" not in st.session_state:
-            st.session_state.ai_history = []
-        st.session_state.ai_history.append({"role": "user", "content": user_input})
-        st.session_state.ai_history.append({"role": "assistant", "content": resp})
-        st.rerun()
-
-    # ─── Conversation history ────────────────────────────────
+    # ─── Conversation history (shared across modes) ─────────────
     if st.session_state.get("ai_history"):
+        st.markdown("---")
         st.markdown("#### 📝 Conversation")
         for m in st.session_state.ai_history:
             if m["role"] == "user":
-                st.markdown(f"**You:** {m['content']}")
+                st.markdown(f"**🧑 You:** {m['content']}")
             else:
-                st.markdown(m["content"])
-            st.markdown("---")
-        if st.button("🗑️ Clear conversation"):
-            st.session_state.ai_history = []
-            st.rerun()
+                st.markdown(m["content"], unsafe_allow_html=True)
+            st.markdown("")
+        col_clear, col_export = st.columns([1, 5])
+        with col_clear:
+            if st.button("🗑️ Clear", key="clear_ai_hist"):
+                st.session_state.ai_history = []
+                st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════════

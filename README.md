@@ -18,7 +18,7 @@ Odisha. Built on the JCL reference architecture, adapted for JFL's
   are available in the Instructions tab for context but covenant statuses
   are not separately re-computed under FY25 audit basis.
 - Interactive stress testing: rate, spread, utilisation, EBITDA, debt shocks.
-- 15 Management Flags register + 120-check Validation Engine status (120/120 PASS).
+- 14 Management Flags register + 120-check Validation Engine status (120/120 PASS).
 - AI Analyst (rule-based, deterministic Q&A) covering 15 JFL-specific topics.
 - PDF Board Memo, CSV exports, historical snapshot tracking.
 
@@ -75,7 +75,7 @@ hard-coded numbers.
 |---|---|
 | **📊 Overview** | Hero verdict, 12 KPI cards (5 bucket + 4 health + 3 concentration), lender concentration donut, 5-bucket pie, per-lender stacked composition, facility cost contribution, FB rate vs WAC. |
 | **🛡️ Covenants** | Status pie, binding-covenant headroom chart, TEV-projected forward trajectory (FY27→FY38), attention items, full per-lender table on FY29 TEV basis. |
-| **📅 Schedule** | Sub-nav: (a) Repayment Profile — TL maturity panel, annual debt-service stacked bar, cumulative run-down, quarterly schedule, facility browser. (b) Renewals — interactive filters, urgency bucket KPIs, gantt timeline, action items. (c) Mgmt Flags & Validation — 15 flag cards, 120-check status register. |
+| **📅 Schedule** | Sub-nav: (a) Repayment Profile — TL maturity panel, annual debt-service stacked bar, cumulative run-down, quarterly schedule, facility browser. (b) Renewals — interactive filters, urgency bucket KPIs, gantt timeline, action items. (c) Mgmt Flags & Validation — 14 flag cards, 120-check status register. |
 | **🤖 AI Analyst** | 4 proactive insight cards + 15 suggested questions + free-form chat + conversation history. |
 | **🔧 Tools** | Sub-nav: (a) Export — PDF board memo + 6 CSV downloads + reconciliation summary. (b) Snapshots — capture state, compare across time, JSON backup/restore. |
 

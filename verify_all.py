@@ -92,7 +92,7 @@ check("44 facilities", len(data["facility_master"]) == 44)
 check("≥44 covenants (audit)", len(data["covenants"]) >= 44)
 check("≥44 covenants (TEV)", len(data["covenants_tev"]) >= 44)
 check("9 lenders", len(data["lender_summary"]) == 9)
-check("15 Management Flags", len(data["management_flags"]) == 15)
+check("14 Management Flags", len(data["management_flags"]) == 14)
 check("64 repayment quarters", len(data["repayment_schedule"]) == 64)
 
 t = data["totals"]

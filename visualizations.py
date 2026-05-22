@@ -20,6 +20,80 @@ from theme import LENDER_COLORS, STATUS_COLORS
 
 
 # ════════════════════════════════════════════════════════════════════
+# SHARED STYLE CONSTANTS — JFL Dashboard Polish (May 2026)
+# ════════════════════════════════════════════════════════════════════
+BG_DARK       = "#0F172A"   # slate-900 — primary background
+BG_PANEL      = "#1E293B"   # slate-800 — chart inner panel
+GRID          = "rgba(148,163,184,0.12)"  # slate-400 @ 12% — subtle gridlines
+AXIS          = "rgba(148,163,184,0.35)"  # slate-400 @ 35% — axis lines
+TEXT_PRIMARY  = "#F1F5F9"   # slate-100 — main text
+TEXT_MUTED    = "#94A3B8"   # slate-400 — secondary text
+TEXT_DIM      = "#64748B"   # slate-500 — tertiary
+
+# Coherent 8-stop palette (each chart picks the slice it needs)
+PALETTE = {
+    "primary":   "#3B82F6",   # blue-500
+    "secondary": "#8B5CF6",   # violet-500
+    "success":   "#10B981",   # emerald-500
+    "warning":   "#F59E0B",   # amber-500
+    "danger":    "#EF4444",   # red-500
+    "pink":      "#EC4899",   # pink-500
+    "teal":      "#14B8A6",   # teal-500
+    "indigo":    "#6366F1",   # indigo-500
+}
+
+# Multi-series sequences
+BUCKET_COLORS = ["#3B82F6", "#F59E0B", "#10B981", "#94A3B8", "#EC4899"]  # B1/B2/B3/B4/Hedge
+DIVERGING     = ["#10B981", "#22C55E", "#EAB308", "#F59E0B", "#EF4444"]  # green→amber→red
+SEQUENTIAL_B  = ["#1E40AF", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD"]  # blue dark→light
+
+
+def _common_layout(height: int = 420, *,
+                   title: str = "",
+                   show_legend: bool = True,
+                   legend_orientation: str = "h",
+                   margin_t: int = 60,
+                   margin_b: int = 60) -> dict:
+    """Standard layout kwargs every chart in the suite uses.
+
+    Ensures consistent dark theme, gridlines, font, margins, and legend
+    positioning across all 9 charts. Pass into fig.update_layout(**kwargs).
+    """
+    layout = {
+        "height": height,
+        "plot_bgcolor": BG_DARK,
+        "paper_bgcolor": BG_DARK,
+        "font": dict(color=TEXT_PRIMARY, family="Inter, -apple-system, sans-serif",
+                     size=12),
+        "title": dict(text=title, x=0.02, xanchor="left", y=0.98, yanchor="top",
+                      font=dict(size=15, color=TEXT_PRIMARY, family="Inter")) if title else None,
+        "margin": dict(l=60, r=30, t=margin_t, b=margin_b),
+        "hoverlabel": dict(bgcolor=BG_PANEL, bordercolor=PALETTE["primary"],
+                           font=dict(color=TEXT_PRIMARY, size=12, family="Inter")),
+        "xaxis": dict(gridcolor=GRID, zerolinecolor=AXIS, linecolor=AXIS,
+                      tickfont=dict(color=TEXT_MUTED, size=11),
+                      title_font=dict(color=TEXT_MUTED, size=12)),
+        "yaxis": dict(gridcolor=GRID, zerolinecolor=AXIS, linecolor=AXIS,
+                      tickfont=dict(color=TEXT_MUTED, size=11),
+                      title_font=dict(color=TEXT_MUTED, size=12)),
+    }
+    if show_legend:
+        if legend_orientation == "h":
+            layout["legend"] = dict(orientation="h", yanchor="bottom", y=-0.22,
+                                     xanchor="center", x=0.5,
+                                     font=dict(color=TEXT_PRIMARY, size=11),
+                                     bgcolor="rgba(0,0,0,0)")
+        else:
+            layout["legend"] = dict(orientation="v", yanchor="top", y=1,
+                                     xanchor="left", x=1.02,
+                                     font=dict(color=TEXT_PRIMARY, size=11),
+                                     bgcolor="rgba(0,0,0,0)")
+    else:
+        layout["showlegend"] = False
+    return {k: v for k, v in layout.items() if v is not None}
+
+
+# ════════════════════════════════════════════════════════════════════
 # COVENANT HEADROOM BAR CHART
 # ════════════════════════════════════════════════════════════════════
 def render_covenant_headroom_chart(cov_df: pd.DataFrame, *, mode: str = "tightest"):
@@ -73,43 +147,40 @@ def render_covenant_headroom_chart(cov_df: pd.DataFrame, *, mode: str = "tightes
 
     fig.add_trace(go.Bar(
         x=df["display_value"], y=df["label"], orientation="h",
-        marker=dict(color=colors, line=dict(color="#0F172A", width=0.5)),
+        marker=dict(color=colors,
+                    line=dict(color=BG_DARK, width=1),
+                    opacity=0.92),
         text=df["actual_text"], textposition="outside",
-        textfont=dict(size=11, color="#F1F5F9"),
+        textfont=dict(size=11, color=TEXT_PRIMARY, family="Inter"),
         hovertemplate=(
             "<b>%{y}</b><br>"
             "Actual: %{customdata[0]}<br>"
             "Threshold: %{customdata[1]} %{customdata[2]}<br>"
             "Headroom: %{customdata[3]:+.1f}%<br>"
-            "Status: %{customdata[4]}<extra></extra>"
+            "Status: <b>%{customdata[4]}</b><extra></extra>"
         ),
         customdata=list(zip(hover_actual, df["Operator"], hover_threshold,
                             df["headroom"], df["Status"])),
     ))
-    fig.add_vline(x=0,  line=dict(color="#EF4444", width=2))
-    fig.add_vline(x=20, line=dict(color="#F59E0B", width=1, dash="dot"))
+    fig.add_vline(x=0,  line=dict(color=PALETTE["danger"], width=2))
+    fig.add_vline(x=20, line=dict(color=PALETTE["warning"], width=1, dash="dot"))
 
     fig.update_layout(
-        height=max(400, 30 * len(df)),
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(
-            title="Headroom % (positive = compliant, negative = breach)",
-            gridcolor="#334155", color="#94A3B8",
-            range=[-110, CAP + 30],
-        ),
-        yaxis=dict(color="#F1F5F9"),
-        margin=dict(l=20, r=140, t=50, b=40),
-        showlegend=False,
+        **_common_layout(height=max(420, 32 * len(df)), show_legend=False,
+                         margin_t=30, margin_b=50),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_xaxes(
+        title="Headroom % (positive = compliant, negative = breach)",
+        range=[-110, CAP + 30],
+    )
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown(
-        f"<div style='font-size:0.82rem;color:#94A3B8;margin-top:4px;text-align:center;'>{subtitle}</div>",
+        f"<div style='font-size:0.82rem;color:{TEXT_MUTED};margin-top:4px;text-align:center;'>{subtitle}</div>",
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div style='display:flex;gap:20px;justify-content:center;font-size:0.82rem;"
-        "color:#94A3B8;margin-top:6px;flex-wrap:wrap;'>"
+        f"<div style='display:flex;gap:20px;justify-content:center;font-size:0.82rem;"
+        f"color:{TEXT_MUTED};margin-top:6px;flex-wrap:wrap;'>"
         "<span>🟢 Compliant (>10% buffer)</span>"
         "<span>🔵 Watch (5-10%)</span>"
         "<span>🟡 Near Breach (<5%)</span>"
@@ -171,43 +242,43 @@ def render_facility_cost_chart(data: Dict[str, Any]):
 
     df = pd.DataFrame(rows).sort_values("Annual_Cost", ascending=True)
     df["color"] = df["Cost_Type"].map({
-        "Interest (FB)": "#3B82F6",
-        "Commission (NFB)": "#F59E0B",
+        "Interest (FB)": PALETTE["primary"],
+        "Commission (NFB)": PALETTE["warning"],
     })
     total_cost = df["Annual_Cost"].sum()
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df["Annual_Cost"], y=df["Label"], orientation="h",
-        marker_color=df["color"].tolist(),
+        marker=dict(color=df["color"].tolist(),
+                    line=dict(color=BG_DARK, width=1),
+                    opacity=0.92),
         text=[f"₹{c:.2f}" for c in df["Annual_Cost"]],
         textposition="outside",
-        textfont=dict(size=10, color="#F1F5F9"),
+        textfont=dict(size=10, color=TEXT_PRIMARY, family="Inter"),
         customdata=list(zip(df["Rate_Pct"], df["Base"], df["Cost_Type"])),
         hovertemplate=(
             "<b>%{y}</b><br>"
-            "Annual Cost: ₹%{x:.2f} Cr<br>"
+            "Annual Cost: <b>₹%{x:.2f} Cr</b><br>"
             "Type: %{customdata[2]}<br>"
             "Rate: %{customdata[0]:.2f}%<br>"
             "Base: ₹%{customdata[1]:.1f} Cr<extra></extra>"
         ),
     ))
     fig.update_layout(
-        height=max(380, 22 * len(df)),
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(title=f"Annual Cost Contribution (₹ Cr)  ·  total ≈ ₹{total_cost:.1f} Cr",
-                   gridcolor="#334155", color="#94A3B8"),
-        yaxis=dict(color="#F1F5F9", autorange="reversed"),
-        margin=dict(l=20, r=80, t=20, b=40),
-        showlegend=False,
+        **_common_layout(height=max(400, 24 * len(df)), show_legend=False,
+                         margin_t=30, margin_b=50),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_xaxes(
+        title=f"Annual Cost Contribution (₹ Cr)  ·  total ≈ ₹{total_cost:.1f} Cr",
+    )
+    fig.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown(
-        "<div style='display:flex;gap:24px;justify-content:center;font-size:0.85rem;"
-        "color:#94A3B8;margin-top:6px;'>"
-        "<span><span style='color:#3B82F6'>■</span> Interest on drawn FB principal</span>"
-        "<span><span style='color:#F59E0B'>■</span> Commission on NFB sanctioned face</span>"
+        f"<div style='display:flex;gap:24px;justify-content:center;font-size:0.85rem;"
+        f"color:{TEXT_MUTED};margin-top:6px;'>"
+        f"<span><span style='color:{PALETTE['primary']};font-size:1.1rem'>■</span> Interest on drawn FB principal</span>"
+        f"<span><span style='color:{PALETTE['warning']};font-size:1.1rem'>■</span> Commission on NFB sanctioned face</span>"
         "</div>",
         unsafe_allow_html=True,
     )
@@ -238,35 +309,35 @@ def render_fb_rate_vs_wac_chart(data: Dict[str, Any]):
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=fm["rate_pct"], y=fm["label"], orientation="h",
-        marker_color=fm["color"].tolist(),
+        marker=dict(color=fm["color"].tolist(),
+                    line=dict(color=BG_DARK, width=1),
+                    opacity=0.92),
         text=[f"{r:.2f}%" for r in fm["rate_pct"]],
         textposition="outside",
-        textfont=dict(size=10, color="#F1F5F9"),
+        textfont=dict(size=10, color=TEXT_PRIMARY, family="Inter"),
         customdata=list(zip(fm["Effective_OS"], fm["Effective_OS"] * fm["Effective_Rate"])),
         hovertemplate=(
             "<b>%{y}</b><br>"
-            "Rate: %{x:.2f}%<br>"
+            "Rate: <b>%{x:.2f}%</b><br>"
             "Outstanding: ₹%{customdata[0]:.1f} Cr<br>"
             "Annual Interest: ₹%{customdata[1]:.2f} Cr<extra></extra>"
         ),
     ))
     fig.add_vline(
         x=wac * 100,
-        line=dict(color="#F59E0B", width=2, dash="dash"),
-        annotation=dict(text=f"Portfolio WAC: {wac*100:.2f}%",
-                        font=dict(color="#F59E0B")),
+        line=dict(color=PALETTE["warning"], width=2.5, dash="dash"),
+        annotation=dict(text=f"<b>Portfolio WAC: {wac*100:.2f}%</b>",
+                        font=dict(color=PALETTE["warning"], size=12, family="Inter"),
+                        bgcolor="rgba(15,23,42,0.85)",
+                        bordercolor=PALETTE["warning"], borderwidth=1, borderpad=4),
     )
     fig.update_layout(
-        height=max(280, 26 * len(fm)),
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(title="Effective Interest Rate (%)  ·  fund-based facilities only",
-                   gridcolor="#334155", color="#94A3B8"),
-        yaxis=dict(color="#F1F5F9", autorange="reversed"),
-        margin=dict(l=20, r=20, t=20, b=40),
-        showlegend=False,
+        **_common_layout(height=max(320, 28 * len(fm)), show_legend=False,
+                         margin_t=30, margin_b=50),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_xaxes(title="Effective Interest Rate (%)  ·  fund-based facilities only")
+    fig.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -305,11 +376,11 @@ def render_lender_composition_stacked(data: Dict[str, Any]):
     pivot = pivot.drop(columns="__total__")
 
     cat_colors = {
-        "Term Loan":         "#3B82F6",
-        "WC Fund-Based":     "#8B5CF6",
-        "FX Buyer's Credit": "#06B6D4",
-        "FD-Backed FB":      "#10B981",
-        "NFB (LC/SBLC/BG)":  "#F59E0B",
+        "Term Loan":         PALETTE["primary"],
+        "WC Fund-Based":     PALETTE["secondary"],
+        "FX Buyer's Credit": PALETTE["teal"],
+        "FD-Backed FB":      PALETTE["success"],
+        "NFB (LC/SBLC/BG)":  PALETTE["warning"],
     }
 
     fig = go.Figure()
@@ -319,11 +390,13 @@ def render_lender_composition_stacked(data: Dict[str, Any]):
             y=list(pivot.index),
             x=pivot[cat].values,
             orientation="h",
-            marker_color=cat_colors.get(cat, "#94A3B8"),
-            text=[f"₹{v:.0f}" if v >= 20 else "" for v in pivot[cat].values],
+            marker=dict(color=cat_colors.get(cat, "#94A3B8"),
+                        line=dict(color=BG_DARK, width=1),
+                        opacity=0.92),
+            text=[f"₹{v:.0f}" if v >= 30 else "" for v in pivot[cat].values],
             textposition="inside",
-            textfont=dict(color="white", size=10),
-            hovertemplate=f"<b>%{{y}}</b><br>{cat}: ₹%{{x:,.1f}} Cr (sanctioned)<extra></extra>",
+            textfont=dict(color="white", size=11, family="Inter"),
+            hovertemplate=f"<b>%{{y}}</b><br>{cat}: <b>₹%{{x:,.1f}} Cr</b> sanctioned<extra></extra>",
         ))
 
     totals = pivot.sum(axis=1)
@@ -331,24 +404,21 @@ def render_lender_composition_stacked(data: Dict[str, Any]):
     for lender, total in totals.items():
         fig.add_annotation(
             x=total + grand * 0.012, y=lender, text=f"<b>₹{total:.0f}</b>",
-            showarrow=False, font=dict(color="#F1F5F9", size=11),
+            showarrow=False, font=dict(color=TEXT_PRIMARY, size=12, family="Inter"),
             xanchor="left",
         )
 
     fig.update_layout(
         barmode="stack",
-        height=max(320, 35 * len(pivot)),
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(title=f"Sanctioned Capacity (₹ Cr)  ·  total ties to ₹{grand:,.0f} Cr",
-                    gridcolor="#334155", color="#94A3B8",
-                    range=[0, totals.max() * 1.22]),
-        yaxis=dict(autorange="reversed", color="#F1F5F9"),
-        legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.18,
-                    bgcolor="rgba(0,0,0,0)", font=dict(color="#94A3B8")),
-        margin=dict(l=20, r=20, t=20, b=80),
+        **_common_layout(height=max(360, 40 * len(pivot)),
+                         margin_t=30, margin_b=80),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_xaxes(
+        title=f"Sanctioned Capacity (₹ Cr)  ·  total ties to ₹{grand:,.0f} Cr",
+        range=[0, totals.max() * 1.22],
+    )
+    fig.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -400,18 +470,11 @@ def render_repayment_timeline(data: Dict[str, Any]):
         ))
 
     fig.update_layout(
-        height=440,
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(title="Financial Year-End", gridcolor="#334155", color="#94A3B8",
-                    tickangle=-30),
-        yaxis=dict(title="Term Loan Outstanding (₹ Cr)",
-                    gridcolor="#334155", color="#94A3B8"),
-        legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.22,
-                    bgcolor="rgba(0,0,0,0)", font=dict(color="#94A3B8")),
-        margin=dict(l=20, r=20, t=20, b=80),
+        **_common_layout(height=460, margin_t=30, margin_b=80),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_xaxes(title="Financial Year-End", tickangle=-30)
+    fig.update_yaxes(title="Term Loan Outstanding (₹ Cr)")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -433,58 +496,58 @@ def render_renewal_timeline(data: Dict[str, Any]):
 
     def _color(d):
         if d < 0: return "#7F1D1D"
-        if d <= 30: return "#EF4444"
-        if d <= 60: return "#F59E0B"
-        if d <= 90: return "#3B82F6"
-        if d <= 180: return "#8B5CF6"
-        return "#64748B"
+        if d <= 30: return PALETTE["danger"]
+        if d <= 60: return PALETTE["warning"]
+        if d <= 90: return PALETTE["primary"]
+        if d <= 180: return PALETTE["secondary"]
+        return TEXT_DIM
 
     fm["color"] = fm["days"].apply(_color)
     fm["expiry_str"] = fm["Validity_Date"].dt.strftime("%d-%b-%Y")
 
     fig = go.Figure()
-    fig.add_vrect(x0=-40, x1=0, fillcolor="rgba(127,29,29,0.18)", line_width=0, layer="below")
-    fig.add_vrect(x0=0, x1=30,  fillcolor="rgba(239,68,68,0.10)", line_width=0, layer="below")
-    fig.add_vrect(x0=30, x1=60, fillcolor="rgba(245,158,11,0.08)", line_width=0, layer="below")
-    fig.add_vrect(x0=60, x1=90, fillcolor="rgba(59,130,246,0.06)", line_width=0, layer="below")
-    fig.add_vrect(x0=90, x1=180, fillcolor="rgba(139,92,246,0.05)", line_width=0, layer="below")
+    fig.add_vrect(x0=-40, x1=0, fillcolor="rgba(127,29,29,0.20)", line_width=0, layer="below")
+    fig.add_vrect(x0=0, x1=30,  fillcolor="rgba(239,68,68,0.12)", line_width=0, layer="below")
+    fig.add_vrect(x0=30, x1=60, fillcolor="rgba(245,158,11,0.10)", line_width=0, layer="below")
+    fig.add_vrect(x0=60, x1=90, fillcolor="rgba(59,130,246,0.08)", line_width=0, layer="below")
+    fig.add_vrect(x0=90, x1=180, fillcolor="rgba(139,92,246,0.06)", line_width=0, layer="below")
     fig.add_vrect(x0=180, x1=400, fillcolor="rgba(100,116,139,0.04)", line_width=0, layer="below")
 
     fig.add_trace(go.Bar(
         x=fm["days"], y=fm["label"], orientation="h",
-        marker=dict(color=fm["color"].tolist(), line=dict(color="#0F172A", width=0.5)),
+        marker=dict(color=fm["color"].tolist(),
+                    line=dict(color=BG_DARK, width=1),
+                    opacity=0.95),
         text=[f"{d:+d}d · {date}" for d, date in zip(fm["days"], fm["expiry_str"])],
         textposition="outside",
-        textfont=dict(size=10, color="#F1F5F9"),
+        textfont=dict(size=10, color=TEXT_PRIMARY, family="Inter"),
         customdata=list(zip(fm["expiry_str"], fm["Sanction_INR"], fm["Category"])),
         hovertemplate=(
             "<b>%{y}</b><br>"
-            "Expires: %{customdata[0]}<br>"
+            "Expires: <b>%{customdata[0]}</b><br>"
             "Days to expiry: %{x:+d}<br>"
             "Sanction: ₹%{customdata[1]:.1f} Cr<br>"
             "Category: %{customdata[2]}<extra></extra>"
         ),
         showlegend=False,
     ))
-    for d, color in [(0, "#94A3B8"), (30, "#EF4444"), (60, "#F59E0B"),
-                      (90, "#3B82F6"), (180, "#8B5CF6")]:
+    for d, color in [(0, TEXT_MUTED), (30, PALETTE["danger"]), (60, PALETTE["warning"]),
+                      (90, PALETTE["primary"]), (180, PALETTE["secondary"])]:
         fig.add_vline(x=d, line=dict(color=color, width=1, dash="dot"))
 
     fig.update_layout(
-        height=max(450, 22 * len(fm)),
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(title="Days to Expiry (negative = overdue)",
-                    gridcolor="#334155", color="#94A3B8",
-                    range=[-40, max(200, fm["days"].max() + 60)]),
-        yaxis=dict(autorange="reversed", color="#F1F5F9"),
-        margin=dict(l=20, r=180, t=20, b=60),
-        showlegend=False,
+        **_common_layout(height=max(460, 24 * len(fm)), show_legend=False,
+                         margin_t=30, margin_b=60),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_xaxes(
+        title="Days to Expiry (negative = overdue)",
+        range=[-40, max(200, fm["days"].max() + 60)],
+    )
+    fig.update_yaxes(autorange="reversed")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
     st.markdown(
-        "<div style='display:flex;gap:18px;justify-content:center;font-size:0.82rem;"
-        "color:#94A3B8;margin-top:4px;flex-wrap:wrap;'>"
+        f"<div style='display:flex;gap:18px;justify-content:center;font-size:0.82rem;"
+        f"color:{TEXT_MUTED};margin-top:4px;flex-wrap:wrap;'>"
         "<span>🩸 Overdue</span>"
         "<span>🔴 ≤30 days</span>"
         "<span>🟠 31-60</span>"
@@ -526,28 +589,28 @@ def render_tev_trajectory(data: Dict[str, Any]):
         fig.add_trace(go.Scatter(
             x=fys, y=vals, mode="lines+markers",
             name=f"{label} (threshold {op} {thr})",
-            line=dict(color=color, width=2.5),
-            marker=dict(size=7),
-            hovertemplate=f"<b>{label}</b><br>%{{x}}: %{{y:.2f}}x<extra></extra>",
+            line=dict(color=color, width=3, shape="spline", smoothing=0.6),
+            marker=dict(size=9, line=dict(color=BG_DARK, width=1.5),
+                        symbol="circle"),
+            hovertemplate=f"<b>{label}</b><br>%{{x}}: <b>%{{y:.2f}}x</b><extra></extra>",
         ))
 
-    fig.add_hline(y=1.25, line=dict(color="#EF4444", width=1, dash="dash"),
-                  annotation=dict(text="DSCR floor 1.25x", font=dict(color="#FCA5A5")))
-    fig.add_hline(y=4.0, line=dict(color="#F59E0B", width=1, dash="dot"),
-                  annotation=dict(text="LTD/EBITDA cap 4.0x", font=dict(color="#FCD34D")))
+    fig.add_hline(y=1.25, line=dict(color=PALETTE["danger"], width=1.5, dash="dash"),
+                  annotation=dict(text="<b>DSCR floor 1.25x</b>",
+                                   font=dict(color="#FCA5A5", size=11),
+                                   bgcolor="rgba(15,23,42,0.85)", bordercolor="#FCA5A5",
+                                   borderwidth=1, borderpad=3))
+    fig.add_hline(y=4.0, line=dict(color=PALETTE["warning"], width=1.5, dash="dot"),
+                  annotation=dict(text="<b>LTD/EBITDA cap 4.0x</b>",
+                                   font=dict(color="#FCD34D", size=11),
+                                   bgcolor="rgba(15,23,42,0.85)", bordercolor="#FCD34D",
+                                   borderwidth=1, borderpad=3))
 
     fig.update_layout(
-        height=400,
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(gridcolor="#334155", color="#94A3B8"),
-        yaxis=dict(title="Ratio (x)", gridcolor="#334155", color="#94A3B8",
-                    range=[0, 7]),
-        legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.18,
-                    bgcolor="rgba(0,0,0,0)", font=dict(color="#94A3B8")),
-        margin=dict(l=20, r=20, t=40, b=80),
+        **_common_layout(height=440, margin_t=30, margin_b=80),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_yaxes(title="Ratio (x)", range=[0, 7])
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -557,36 +620,39 @@ def render_bucket_donut(data: Dict[str, Any]):
     """Headline 5-bucket view: B1 + B2 + B3 + B4 + Hedge memo."""
     t = data["totals"]
     labels = [
-        f"B1 FB Mains<br>₹{t['FB_Mains_B1']:.0f} Cr",
-        f"B2 NFB Mains<br>₹{t['NFB_Mains_B2']:.0f} Cr",
-        f"B3 FD-Backed<br>₹{t['FD_Backed_B3']:.0f} Cr",
-        f"B4 Uncommitted<br>₹{t['Uncommitted_B4']:.0f} Cr",
-        f"Hedge memo<br>₹{t['Hedge_Memo']:.0f} Cr",
+        f"B1 FB Mains",
+        f"B2 NFB Mains",
+        f"B3 FD-Backed",
+        f"B4 Uncommitted",
+        f"Hedge Memo",
     ]
     values = [t['FB_Mains_B1'], t['NFB_Mains_B2'],
               t['FD_Backed_B3'], t['Uncommitted_B4'], t['Hedge_Memo']]
-    colors = ["#3B82F6", "#F59E0B", "#10B981", "#94A3B8", "#EC4899"]
+    custom_amounts = [f"₹{v:,.0f} Cr" for v in values]
+    total = sum(values)
 
     fig = go.Figure(data=[go.Pie(
-        labels=labels, values=values,
-        marker=dict(colors=colors, line=dict(color="#0F172A", width=2)),
-        hole=0.55, textinfo="label+percent",
-        textfont=dict(color="white", size=11),
-        hovertemplate="<b>%{label}</b><br>₹%{value:.0f} Cr<br>%{percent}<extra></extra>",
+        labels=labels, values=values, customdata=custom_amounts,
+        marker=dict(colors=BUCKET_COLORS,
+                    line=dict(color=BG_DARK, width=3)),
+        hole=0.62,
+        textinfo="label+percent",
+        textposition="outside",
+        textfont=dict(color=TEXT_PRIMARY, size=12, family="Inter"),
+        hovertemplate="<b>%{label}</b><br>%{customdata}<br><b>%{percent}</b> of total<extra></extra>",
+        rotation=90,
+        pull=[0.02, 0.02, 0.02, 0.02, 0.02],
     )])
-    total = sum(values)
     fig.update_layout(
-        height=400,
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        showlegend=False,
-        margin=dict(l=20, r=20, t=20, b=20),
-        annotations=[dict(text=f"<b>₹{total:,.0f}</b><br>"
-                              f"<span style='font-size:0.85rem;color:#94A3B8'>Cr Total Committed</span>",
-                          x=0.5, y=0.5, font=dict(size=22, color="#F1F5F9"),
-                          showarrow=False)],
+        **_common_layout(height=440, show_legend=False, margin_t=30, margin_b=30),
+        annotations=[
+            dict(text=f"<b style='font-size:30px;color:{TEXT_PRIMARY}'>₹{total:,.0f}</b>"
+                       f"<br><span style='font-size:11px;color:{TEXT_MUTED};letter-spacing:0.05em'>CR · TOTAL COMMITTED</span>"
+                       f"<br><span style='font-size:10px;color:{TEXT_DIM}'>(incl. uncommitted &amp; hedge)</span>",
+                  x=0.5, y=0.5, showarrow=False, font=dict(family="Inter")),
+        ],
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -624,29 +690,32 @@ def render_scenario_comparison_chart(base: Dict, stress: Dict, basis: str):
     fig = go.Figure()
     fig.add_trace(go.Bar(
         name=f"Base ({basis})", x=labels, y=base_v,
-        marker_color="#3B82F6",
-        text=[f"{v:.2f}" for v in base_v], textposition="outside",
+        marker=dict(color=PALETTE["primary"],
+                    line=dict(color=BG_DARK, width=1.5),
+                    opacity=0.92),
+        text=[f"<b>{v:.2f}x</b>" for v in base_v], textposition="outside",
+        textfont=dict(color=TEXT_PRIMARY, size=12, family="Inter"),
+        hovertemplate="<b>%{x}</b><br>Base: <b>%{y:.2f}x</b><extra></extra>",
     ))
     fig.add_trace(go.Bar(
         name="Stress", x=labels, y=stress_v,
-        marker_color="#F59E0B",
-        text=[f"{v:.2f}" for v in stress_v], textposition="outside",
+        marker=dict(color=PALETTE["warning"],
+                    line=dict(color=BG_DARK, width=1.5),
+                    opacity=0.92),
+        text=[f"<b>{v:.2f}x</b>" for v in stress_v], textposition="outside",
+        textfont=dict(color=TEXT_PRIMARY, size=12, family="Inter"),
+        hovertemplate="<b>%{x}</b><br>Stress: <b>%{y:.2f}x</b><extra></extra>",
     ))
     fig.add_trace(go.Scatter(
         name="Threshold", x=labels, y=thresholds,
         mode="markers",
-        marker=dict(symbol="line-ew", size=20, color="#EF4444",
-                     line=dict(width=3)),
+        marker=dict(symbol="line-ew", size=28, color=PALETTE["danger"],
+                     line=dict(width=4)),
+        hovertemplate="<b>%{x}</b><br>Threshold: %{y:.2f}x<extra></extra>",
     ))
     fig.update_layout(
         barmode="group",
-        height=380,
-        plot_bgcolor="#0F172A", paper_bgcolor="#0F172A",
-        font=dict(color="#F1F5F9", family="Inter, sans-serif"),
-        xaxis=dict(gridcolor="#334155", color="#94A3B8"),
-        yaxis=dict(gridcolor="#334155", color="#94A3B8"),
-        legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.15,
-                    bgcolor="rgba(0,0,0,0)", font=dict(color="#94A3B8")),
-        margin=dict(l=20, r=20, t=20, b=60),
+        **_common_layout(height=420, margin_t=30, margin_b=70),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    fig.update_yaxes(title="Ratio (x)")
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})

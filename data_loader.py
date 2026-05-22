@@ -12,7 +12,7 @@ Reads pre-computed values from the Excel:
   - Interest Schedule (per-facility annual cost)
   - Scenario Analysis (Base / Stress / Severe presets)
   - Renewal & Review Calendar
-  - Management Flags (F-01..F-15)
+  - Management Flags (F-01..F-15 (F-11 retired as duplicate))
   - Validation & Integrity (120 integrity checks: 30 cross-source V&V + 90 internal VJF)
   - Security & Charge Matrix
   - Debt Pricing Table
@@ -679,7 +679,7 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
             continue
     out["rate_sensitivity"] = pd.DataFrame(rate_sens)
 
-    # ─── Management Flags (F-01..F-15) ──────────────────────────────────
+    # ─── Management Flags (F-01..F-15 (F-11 retired as duplicate)) ──────────────────────────────────
     mf_raw = pd.read_excel(path, sheet_name="Management Flags", header=3,
                             engine=_EXCEL_ENGINE)
     mf_records = []

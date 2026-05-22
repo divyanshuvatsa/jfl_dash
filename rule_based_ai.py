@@ -9,7 +9,7 @@ JFL-specific themes (different from JCL):
   - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
   - ICICI TL takeover ₹840 Cr → Adjusted Consortium Debt ₹3,626 Cr
   - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
-  - 15 Management Flags
+  - 14 Management Flags
   - 120-check Validation & Integrity (30 cross-source + 90 internal VJF)
 """
 

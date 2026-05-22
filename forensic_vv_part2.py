@@ -408,13 +408,15 @@ else:
 
 
 # ═══════════════════════════════════════════════════════════════════════
-print("\n[N] MANAGEMENT FLAGS — F-01..F-15 all loaded")
+print("\n[N] MANAGEMENT FLAGS — F-01..F-15 (F-11 retired as duplicate) all loaded")
 # ═══════════════════════════════════════════════════════════════════════
 mf = data["management_flags"]
-expected_flags = [f"F-{i:02d}" for i in range(1, 16)]
+# F-11 was retired as a duplicate of F-01; the active register is 14 flags
+expected_flags = [f"F-{i:02d}" for i in range(1, 16) if i != 11]
 loaded = mf["Flag"].tolist()
 for f in expected_flags:
     check(f"  {f} loaded", f in loaded)
+check("F-11 correctly retired (not in register)", "F-11" not in loaded)
 
 
 # ═══════════════════════════════════════════════════════════════════════
