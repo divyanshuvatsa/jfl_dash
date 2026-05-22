@@ -6,11 +6,11 @@ All numbers traced to data['...'] — no hardcoded magic values.
 JFL-specific themes (different from JCL):
   - Project is pre-COD (FY29 first covenant test)
   - 9 lenders, 44 facilities
-  - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge)
+  - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
   - ICICI TL takeover ₹840 Cr → Adjusted Consortium Debt ₹3,626 Cr
-  - Dual covenant basis (FY25 Audit vs FY29 TEV-projected)
+  - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
   - 15 Management Flags
-  - 87-check Validation Engine
+  - 120-check Validation & Integrity (30 cross-source + 90 internal VJF)
 """
 
 from __future__ import annotations
@@ -252,7 +252,8 @@ def answer_concentration(data: Dict[str, Any]) -> str:
     total_sd = data["totals"]["Bucket1_Sanctioned_Debt"]
 
     out = [f"**🏦 JFL Lender Concentration Analysis**\n"]
-    out.append(f"Sanctioned Debt: {_inr(total_sd)} (across 8 active lenders + HSBC uncommitted; "
+    out.append(f"Sanctioned Debt: {_inr(total_sd)} (across {len(ls_nz)} funded lenders + "
+                f"{len(ls) - len(ls_nz)} memo/uncommitted; "
                 f"{len(data['facility_master'])} facilities total)")
     out.append("")
     out.append("| Lender | Sanctioned | % | NFB Contingent |")
@@ -321,7 +322,8 @@ def answer_board_summary(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     out = [f"**📋 JFL Debt Portfolio — 5-Point Board Summary**\n"]
     out.append(f"1. **Sanctioned Debt** = {_inr(t['Bucket1_Sanctioned_Debt'])} (B1 FB Mains "
                 f"{_inr(t['FB_Mains_B1'], 0)} + B2 NFB Mains {_inr(t['NFB_Mains_B2'], 0)}) across "
-                f"8 active lenders, {fm_count} facilities. ICICI TL takeover ₹840 Cr → "
+                f"9 lenders (8 funded + HSBC uncommitted memo), {fm_count} facilities. "
+                f"ICICI TL takeover ₹840 Cr → "
                 f"**Adjusted Consortium Debt {_inr(t['Adjusted_Consortium'])}**.")
     out.append(f"2. **Annual Run-Rate** = {_inr(isum['Total_Interest_Commission'])} at "
                 f"WAC **{isum['Weighted_Avg_Cost']*100:.2f}%** on FB economic debt. "

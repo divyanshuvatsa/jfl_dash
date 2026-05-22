@@ -2,10 +2,10 @@
 
 Mirrors the JCL reference architecture, adapted for:
   - 9 lenders (vs JCL's 3 active)
-  - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge)
+  - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
   - 7 term loans (vs 3)
-  - Dual covenant basis (FY25 Audit / FY29 TEV)
-  - 15 Management Flags + 87-check Validation Engine
+  - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
+  - 15 Management Flags + 120-check Validation & Integrity
 """
 
 from __future__ import annotations
@@ -119,11 +119,11 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
 - All 44 facility records
 - 9 benchmark rates
 - FY25 audit financials + FY29 TEV projections
-- All 44 active covenants (dual basis)
+- 44 active covenants (FY29 TEV projected)
 - Repayment & Interest schedules (7 TLs)
-- 5-bucket totals
+- 5-bucket totals (B1/B2/B3/B4/Hedge) + B0 sub-limits
 - 15 Management Flags
-- 87 Validation Engine checks
+- 120 Validation & Integrity checks (30 cross-source + 90 internal VJF)
 
 **Edit the Excel → Reload → everything updates.**
 """)
@@ -135,8 +135,9 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
             "Financial Basis",
             options=["FY29E (TEV)", "FY25A"],
             index=0, horizontal=True, key="basis_input",
-            help=("FY29E (TEV): post-COD TEV-projected (43/44 compliant). "
-                  "FY25A: pre-COD audit baseline.")
+            help=("FY29E (TEV): post-COD TEV-projected financials (used for "
+                  "covenant testing — 43/44 Compliant). "
+                  "FY25A: pre-COD audit baseline financials.")
         )
 
         st.markdown("### 🔬 Scenario Stress")
@@ -272,7 +273,8 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
                      f"Annual run-rate {inr(int_calc['Total'])}.")
     else:
         verdict, color = "HEALTHY", "#10B981"
-        narrative = (f"Sanctioned debt <b>{inr(t['Bucket1_Sanctioned_Debt'])}</b> across 8 active lenders. "
+        narrative = (f"Sanctioned debt <b>{inr(t['Bucket1_Sanctioned_Debt'])}</b> across 9 lenders "
+                     f"(8 funded + HSBC uncommitted memo). "
                      f"Adjusted Consortium <b>{inr(t['Adjusted_Consortium'])}</b> (after ICICI ₹840 Cr takeover). "
                      f"Annual run-rate <b>{inr(int_calc['Total'])}</b> at WAC <b>{int_calc['Weighted_Avg_Cost']*100:.2f}%</b>. "
                      f"<b>{compliant}/{len(cov_df)} covenants compliant</b>.")
@@ -473,8 +475,8 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
             <div style='color:#CBD5E1;font-size:0.82rem;'>Consortium first formal test once plant is operational. IDFC tests from FY27 (2-yr earlier — flag F-04).</div>
         </div>
         <div style='padding:14px 0;border-top:1px solid #334155;'>
-            <div style='font-size:0.78rem;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;'>Basis Comparison</div>
-            <div style='font-size:0.9rem;color:#CBD5E1;'>FY25 Audit ≈ pre-COD reality (high breach count). FY29 TEV ≈ projected post-COD compliance (43/44 Compliant per Excel ground truth).</div>
+            <div style='font-size:0.78rem;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;'>Basis Note</div>
+            <div style='font-size:0.9rem;color:#CBD5E1;'>The verified Excel tracks covenants on the FY29 TEV-projected basis (post-COD). FY25 audit covenant testing is not separately maintained since most JFL covenants first test in FY27/FY29 (post-COD). Result: <b>43 of 44 Compliant + 1 Near Breach</b> (ICICI WC Rating).</div>
         </div>
         """), unsafe_allow_html=True)
 
@@ -1087,8 +1089,8 @@ def render_tab_flags_and_validation(data: Dict[str, Any]):
                 </div>
             </div>"""), unsafe_allow_html=True)
 
-    # ─── Validation Engine ────────────────────────────────────
-    render_tab_header("VALIDATION", "Model Integrity — Validation Engine",
+    # ─── Validation & Integrity ───────────────────────────────
+    render_tab_header("VALIDATION", "Model Integrity — Validation & Integrity",
                        f"{vs.get('Pass_Count', 0)}/{vs.get('Total_Checks', 0)} checks passed · "
                        f"Overall {vs.get('Overall_Status', 'PASS')}.")
     c1, c2, c3, c4 = st.columns(4)
@@ -1194,7 +1196,7 @@ def render_tab_export(data: Dict[str, Any], controls: Dict[str, Any]):
     st.markdown("#### 📄 Board Memo (PDF)")
     st.caption("A polished multi-page PDF with verdict, KPIs, five-bucket table, "
                 "lender concentration, top tightest covenants, open Management Flags, "
-                "and Validation Engine status. Suitable for senior-management distribution.")
+                "and Validation & Integrity status. Suitable for senior-management distribution.")
     try:
         from pdf_export import generate_board_memo
         pdf_bytes = generate_board_memo(data, cov_df, controls)
@@ -1242,7 +1244,7 @@ def render_tab_export(data: Dict[str, Any], controls: Dict[str, Any]):
                             mime="text/csv", use_container_width=True)
     with c3:
         csv = data["validation_engine"].to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Validation Engine CSV", csv,
+        st.download_button("📥 Validation & Integrity CSV", csv,
                             file_name=f"jfl_validation_{data['as_of_date']}.csv",
                             mime="text/csv", use_container_width=True)
 

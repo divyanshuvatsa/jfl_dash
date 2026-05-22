@@ -5,7 +5,7 @@ Reads pre-computed values from the Excel:
   - Facility Master (44 rows × 34 columns)
   - Lender Summary (5-bucket totals: B1 FB Mains, B2 NFB Mains, B3 FD-Backed,
     B4 Uncommitted, Hedge memo; plus Adjusted Consortium = B1+B2 − ICICI TL takeover)
-  - Covenant Tracker (44 active covenants on FY25 audit basis)
+  - Covenant Tracker (44 active covenants — consortium-aggregated FY29 TEV actuals)
   - FY29 Covenant Compliance — TEV-projected (44 covenants on TEV FY29 basis)
   - TEV Inputs (full FY23-FY38 P&L / BS / debt schedule)
   - Repayment Schedule (quarterly, Q1 FY24 to Q4 FY39, 7 TLs)
@@ -13,7 +13,7 @@ Reads pre-computed values from the Excel:
   - Scenario Analysis (Base / Stress / Severe presets)
   - Renewal & Review Calendar
   - Management Flags (F-01..F-15)
-  - Validation Engine (87 integrity checks)
+  - Validation & Integrity (120 integrity checks: 30 cross-source V&V + 90 internal VJF)
   - Security & Charge Matrix
   - Debt Pricing Table
 
@@ -144,7 +144,7 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
     out["short_name"] = "JFL"
     out["parent_group"] = "Jindal Stainless Group (Ratan Jindal Group)"
     out["project"] = "2.0 MTPA Greenfield Steel Making Unit, Kalinga Nagar, Odisha"
-    out["model_version"] = "v11 — Independent V&V Audit (May-2026)"
+    out["model_version"] = "v12 — Final Verified Edition (May-2026)"
     out["classification"] = "Confidential — Treasury / Senior Management / Audit"
 
     # ─── Instructions & Assumptions ─────────────────────────────────────
@@ -190,19 +190,19 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         "EBITDA": "EBITDA",
         "Total Debt (Gross)": "Total Debt",
         "Term Debt (LTD)": "Term Debt",
-        "Tangible Net Worth (TNW)": "TNW",
+        "TNW": "TNW",
         "Adjusted TNW (ATNW)": "ATNW",
         "Current Assets": "Current Assets",
         "Current Liabilities": "Current Liabilities",
-        "Total Outside Liabilities (TOL)": "TOL",
+        "TOL": "TOL",
         "Interest Expense (TTM)": "Interest Expense",
-        "Fixed Assets (net block)": "Fixed Assets",
-        "Secured Debt (outstanding)": "Secured Debt",
+        "Net Block (Fixed Assets)": "Fixed Assets",
+        "Secured Debt": "Secured Debt",
         "External Rating": "External Rating",
-        "Promoter Shareholding %": "Promoter Shareholding",
+        "Promoter Shareholding": "Promoter Shareholding",
         "Principal Repayment (TTM)": "Principal Repayment TTM",
         "Tax Paid (TTM)": "Tax Paid",
-        "Scheduled TL Repayment (next 12M)": "Sched TL Repay",
+        "Scheduled TL Repay (next 12M)": "Sched TL Repay",
     }
     for i in range(28, 46):
         try:
@@ -324,61 +324,84 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         })
     out["facility_master"] = pd.DataFrame(fm_records)
 
-    # ─── Covenant Tracker (FY25 audit basis) ────────────────────────────
+    # ─── Covenant Tracker (FY29 TEV-projected consortium actuals) ───────
+    # NOTE: Despite the historical label "FY25 audit basis", the verified Excel's
+    # Covenant Tracker stores FY29 TEV-projected consortium-aggregated actuals
+    # (DSCR 1.80, FACR 1.51, ISCR 3.65 etc). The dashboard's FY25 toggle and
+    # FY29 toggle therefore both read the same Excel-stored Compliant statuses.
     cov_raw = pd.read_excel(path, sheet_name="Covenant Tracker", header=2,
                             engine=_EXCEL_ENGINE)
+    # Forward-fill the Lender column (Excel uses merged-style continuation
+    # rows where Lender is blank for sub-covenants under the same lender).
+    if "Lender" in cov_raw.columns:
+        cov_raw["Lender"] = cov_raw["Lender"].replace(r'^\s*$', pd.NA, regex=True).ffill()
     cov_records = []
     for _, r in cov_raw.iterrows():
         lender_v = r.get("Lender")
         cov_v = r.get("Covenant")
         if pd.isna(lender_v) or pd.isna(cov_v):
             continue
-        lender_str = str(lender_v)
-        # Skip section headers / summary rows
+        lender_str = str(lender_v).strip()
+        # Skip section headers / summary rows (Covenant Tracker has a SUMMARY
+        # block at rows 49+ with "Total Covenants", "Live — Compliant", etc.)
         if lender_str.startswith(("[REMOVED", "Covenant Dashboard", "Total ",
                                   "Compliant", "Near", "Breached", "Pending",
-                                  "Portfolio")):
+                                  "Portfolio", "Live ", "Not Yet Due",
+                                  "Category", "COVENANT SUMMARY", "SUMMARY")):
             continue
 
         cov_records.append({
             "Lender": lender_str,
             "Covenant": str(cov_v),
-            "Operator": _safe_str(r["Operator"]),
+            "Operator": _safe_str(r.get("Op", r.get("Operator", ""))),
             "Threshold": r["Threshold"] if pd.notna(r["Threshold"]) else None,
             "Actual": r["Actual"] if pd.notna(r["Actual"]) else None,
             "Headroom": r["Headroom"] if pd.notna(r["Headroom"]) else None,
             "Status": _safe_str(r["Status"], "Pending"),
             "Risk": _safe_str(r.get("Risk", "Low")),
-            "Source": _safe_str(r.get("Source / Notes", "")),
+            "Source": _safe_str(r.get("SL Reference", r.get("Source / Notes", ""))),
             "Source_Type": _safe_str(r.get("Source Type", "")),
-            "Frequency": _safe_str(r.get("Reporting Frequency", "")),
-            "First_Test": _safe_str(r.get("First Test Date", "")),
+            "Frequency": _safe_str(r.get("Frequency", r.get("Reporting Frequency", ""))),
+            "First_Test": _safe_str(r.get("First Test", r.get("First Test Date", ""))),
         })
     out["covenants"] = pd.DataFrame(cov_records)
 
     # ─── FY29 Covenant Compliance (TEV-projected) ───────────────────────
+    # Verified Excel has header at row 6 (header=5 in 0-indexed pandas).
+    # The verified Excel tracks only FY29 TEV projections — there are no
+    # separate FY25 Audit columns. Earlier dashboard versions assumed dual
+    # tracking; here we map only the FY29 fields and leave FY25 fields None.
     cov_tev_raw = pd.read_excel(path, sheet_name="FY29 Covenant Compliance (TEV)",
-                                 header=3, engine=_EXCEL_ENGINE)
+                                 header=5, engine=_EXCEL_ENGINE)
+    # Forward-fill Lender (same merged-row convention)
+    if "Lender" in cov_tev_raw.columns:
+        cov_tev_raw["Lender"] = cov_tev_raw["Lender"].replace(r'^\s*$', pd.NA, regex=True).ffill()
     cov_tev_records = []
     for _, r in cov_tev_raw.iterrows():
         if pd.isna(r.get("Lender")) or pd.isna(r.get("Covenant")):
             continue
-        lender_str = str(r["Lender"])
+        lender_str = str(r["Lender"]).strip()
         if lender_str.startswith(("SUMMARY", "COVENANTS REMOVED", "KEY INSIGHTS",
                                   "Compliant", "Near", "Breached", "Status",
-                                  "Pending", "TOTAL", "R#")):
+                                  "Pending", "TOTAL", "R#", "Live ",
+                                  "Not Yet Due", "Category", "Count")):
+            continue
+        # Summary rows after row 53 have numeric-only Lender values (e.g. "43", "44", "0")
+        if lender_str.replace(".", "").replace("-", "").isdigit():
             continue
         cov_tev_records.append({
             "Lender": lender_str,
             "Covenant": _safe_str(r["Covenant"]),
             "Operator": _safe_str(r.get("Op", ">=")),
             "Threshold": r.get("Threshold") if pd.notna(r.get("Threshold")) else None,
-            "Actual_FY29": r["FY29 Actual\n(TEV)"] if pd.notna(r.get("FY29 Actual\n(TEV)")) else None,
-            "Status_FY29": _safe_str(r.get("FY29 Status\n(TEV)", "")),
+            "Actual_FY29": r["FY29 Actual"] if pd.notna(r.get("FY29 Actual")) else None,
+            "Status_FY29": _safe_str(r.get("Status", "")),
             "Headroom_FY29": _safe_str(r.get("Headroom", "")),
-            "Actual_FY25": r["FY25 Audit\nActual"] if pd.notna(r.get("FY25 Audit\nActual")) else None,
-            "Status_FY25": _safe_str(r.get("FY25 Audit\nStatus", "")),
-            "Trend": _safe_str(r.get("Trend FY25→29", "")),
+            # Verified Excel does not track FY25 audit-basis covenants separately
+            # (most JFL covenants first test post-COD i.e. FY27/FY29). Leave None.
+            "Actual_FY25": None,
+            "Status_FY25": "",
+            "Trend": "",
             "Source_FY29": _safe_str(r.get("Source", "")),
         })
     out["covenants_tev"] = pd.DataFrame(cov_tev_records)
@@ -446,25 +469,32 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
     out["lender_bucket3"] = pd.DataFrame(fd_records)
 
     # Section B: Key KPIs (used as ground truth for totals)
-    # Layout (col 2 holds the value — col 1 is merged with col 2 in source):
-    #   row 20 = Sanctioned (B1+B2);   row 21 = B1 only;  row 22 = B2 only;
-    #   row 23 = NFB Contingent;       row 24 = FD-Backed; row 25 = Uncommitted;
-    #   row 26 = Hedge memo;           row 27 = ICICI TL takeover;
-    #   row 28 = Adjusted Consortium
+    # Verified Excel layout — Section B starts at Excel row 18 ("B.  KEY KPIs"),
+    # header at row 19, values at rows 20-28 in column B (iloc col 1).
+    # iloc is 0-indexed when header=None, so Excel row 20 = iloc[19].
+    #   iloc[19, 1] = Sanctioned (B1+B2) = 4466
+    #   iloc[20, 1] = FB Mains B1        = 3916
+    #   iloc[21, 1] = NFB Mains B2       = 550
+    #   iloc[22, 1] = NFB Contingent     = 2040
+    #   iloc[23, 1] = FD-Backed B3       = 150
+    #   iloc[24, 1] = Uncommitted B4     = 1000
+    #   iloc[25, 1] = Hedge Memo         = 75
+    #   iloc[26, 1] = ICICI TL Takeover  = 840
+    #   iloc[27, 1] = Adjusted Consortium= 3626
     out["totals"] = {
         # JCL-compatible aliases — populate the same keys the JCL UI expects
-        "Bucket1_Sanctioned_Debt": _safe_float(ls.iloc[20, 2]),  # 4466
-        "Bucket2_NFB_Contingent":  _safe_float(ls.iloc[23, 2]),  # 2040
-        "Bucket3_Separate":        _safe_float(ls.iloc[24, 2]),  # 150
+        "Bucket1_Sanctioned_Debt": _safe_float(ls.iloc[19, 1]),  # 4466
+        "Bucket2_NFB_Contingent":  _safe_float(ls.iloc[22, 1]),  # 2040
+        "Bucket3_Separate":        _safe_float(ls.iloc[23, 1]),  # 150
         # JFL-specific extras
-        "FB_Mains_B1":             _safe_float(ls.iloc[21, 2]),  # 3916
-        "NFB_Mains_B2":            _safe_float(ls.iloc[22, 2]),  # 550
-        "NFB_Contingent":          _safe_float(ls.iloc[23, 2]),  # 2040
-        "FD_Backed_B3":            _safe_float(ls.iloc[24, 2]),  # 150
-        "Uncommitted_B4":          _safe_float(ls.iloc[25, 2]),  # 1000
-        "Hedge_Memo":              _safe_float(ls.iloc[26, 2]),  # 75
-        "ICICI_TL_Takeover":       _safe_float(ls.iloc[27, 2]),  # 840
-        "Adjusted_Consortium":     _safe_float(ls.iloc[28, 2]),  # 3626
+        "FB_Mains_B1":             _safe_float(ls.iloc[20, 1]),  # 3916
+        "NFB_Mains_B2":            _safe_float(ls.iloc[21, 1]),  # 550
+        "NFB_Contingent":          _safe_float(ls.iloc[22, 1]),  # 2040
+        "FD_Backed_B3":            _safe_float(ls.iloc[23, 1]),  # 150
+        "Uncommitted_B4":          _safe_float(ls.iloc[24, 1]),  # 1000
+        "Hedge_Memo":              _safe_float(ls.iloc[25, 1]),  # 75
+        "ICICI_TL_Takeover":       _safe_float(ls.iloc[26, 1]),  # 840
+        "Adjusted_Consortium":     _safe_float(ls.iloc[27, 1]),  # 3626
     }
 
     # Lender concentration (per-lender shares of Sanctioned Debt)
@@ -484,7 +514,7 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
                              engine=_EXCEL_ENGINE)
     int_records = []
     for _, r in int_raw.iterrows():
-        sno = pd.to_numeric(r.get("S.No"), errors="coerce")
+        sno = pd.to_numeric(r.get("#", r.get("S.No")), errors="coerce")
         if pd.isna(sno):
             continue
         bucket_raw = r.get("Bucket")
@@ -498,26 +528,34 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
             "Facility": str(r["Facility"]),
             "Category": str(r["Category"]),
             "Bucket": bucket,
-            "Sanction_INR": _safe_float(r["Sanc ₹ Cr"]),
-            "Effective_OS": _safe_float(r["Eff O/S"]),
-            "Effective_Rate": _safe_float(r["Eff Rate"]),
-            "Annual_Cost": _safe_float(r["Annual Interest/Comm. ₹Cr"]),
-            "Currency": _safe_str(r.get("Ccy", "INR")),
+            "Sanction_INR": _safe_float(r.get("Sanc (₹ Cr)", r.get("Sanc ₹ Cr"))),
+            "Effective_OS": _safe_float(r.get("Eff O/S (₹ Cr)", r.get("Eff O/S"))),
+            "Effective_Rate": _safe_float(r.get("Eff Rate", r.get("Eff Rate p.a."))),
+            "Annual_Cost": _safe_float(r.get("Annual Int/Comm (₹ Cr)", r.get("Annual Interest/Comm. ₹Cr"))),
+            "Currency": _safe_str(r.get("CCY", r.get("Ccy", "INR"))),
             "Remarks": _safe_str(r.get("Remarks", "")),
         })
     out["interest_schedule"] = pd.DataFrame(int_records)
 
-    # Interest summary block — values are in column 8 (Annual Interest column)
+    # Interest summary block — verified Excel layout:
+    #   Row 50 = "SUMMARY — ANNUAL INTEREST..." header
+    #   Row 51 = column headers (Bucket | Description | Eff O/S | Int/Comm | Notes)
+    #   Row 52 = Bucket 1; Row 53 = Bucket 2; Row 54 = Bucket 3;
+    #   Row 55 = TOTAL ECONOMIC RUN-RATE
+    #   Row 56 = Bucket 4 (HSBC uncommitted memo)
+    #   Row 57 = Bucket 0 (sub-limits — informational only)
+    #   Row 59 = WAC (col C / iloc col 2)
+    # All Int/Comm values are in column D (iloc col 3).
     int_summary_raw = pd.read_excel(path, sheet_name="Interest Schedule",
                                      header=None, engine=_EXCEL_ENGINE)
     out["interest_summary"] = {
-        "Bucket1_Interest":         _safe_float(int_summary_raw.iloc[50, 8]),  # 358.611
-        "Bucket2_Commission":       _safe_float(int_summary_raw.iloc[51, 8]),  # 3.05
-        "Bucket3_Interest":         _safe_float(int_summary_raw.iloc[52, 8]),  # 13.5
-        "Total_Interest_Commission":_safe_float(int_summary_raw.iloc[53, 8]),  # 375.161
-        "Bucket4_Theoretical":      _safe_float(int_summary_raw.iloc[54, 8]),  # 90
-        "Bucket0_Sublimit":         _safe_float(int_summary_raw.iloc[55, 8]),  # 253.4464
-        "Weighted_Avg_Cost":        _safe_float(int_summary_raw.iloc[60, 8]),  # 0.0916
+        "Bucket1_Interest":         _safe_float(int_summary_raw.iloc[51, 3]),  # 337.696
+        "Bucket2_Commission":       _safe_float(int_summary_raw.iloc[52, 3]),  # 3.05
+        "Bucket3_Interest":         _safe_float(int_summary_raw.iloc[53, 3]),  # 13.5
+        "Total_Interest_Commission":_safe_float(int_summary_raw.iloc[54, 3]),  # 354.246
+        "Bucket4_Theoretical":      _safe_float(int_summary_raw.iloc[55, 3]),  # 90
+        "Bucket0_Sublimit":         _safe_float(int_summary_raw.iloc[56, 3]),  # 253.4464
+        "Weighted_Avg_Cost":        _safe_float(int_summary_raw.iloc[58, 2]),  # 0.0862
     }
 
     # ─── Repayment Schedule (quarterly, 7 TLs) ──────────────────────────
@@ -662,8 +700,15 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         })
     out["management_flags"] = pd.DataFrame(mf_records)
 
-    # ─── Validation Engine ──────────────────────────────────────────────
-    ve_raw = pd.read_excel(path, sheet_name="Validation Engine", header=11,
+    # ─── Validation & Integrity ─────────────────────────────────────────
+    # Verified Excel layout:
+    #   Section A (rows 5-34):  Cross-source V&V — 30 tests, header at row 4
+    #   Section B (rows 39-128): Internal VJF checks — 90 tests, header at row 38
+    #   Master Status (rows 131-137): Total / PASS / FAIL / Critical FAIL / Status
+    # Combined total: 120 integrity checks.
+    # We read the VJF (internal) block which has the richer schema; the
+    # cross-source V&V block has only Test ID / Result / Detail.
+    ve_raw = pd.read_excel(path, sheet_name="Validation & Integrity", header=37,
                             engine=_EXCEL_ENGINE)
     ve_records = []
     for _, r in ve_raw.iterrows():
@@ -681,24 +726,48 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         })
     out["validation_engine"] = pd.DataFrame(ve_records)
 
-    # Master status summary
-    ve_full = pd.read_excel(path, sheet_name="Validation Engine", header=None,
+    # Also expose the cross-source V&V (DI / FI / XR / SL / AT / REC / SI / v7) block
+    ve_cs_raw = pd.read_excel(path, sheet_name="Validation & Integrity", header=3,
+                               engine=_EXCEL_ENGINE)
+    ve_cs_records = []
+    for _, r in ve_cs_raw.iterrows():
+        tid = r.get("Test ID")
+        if pd.isna(tid):
+            continue
+        tid_str = str(tid).strip()
+        if tid_str.startswith("VJF") or tid_str.startswith("V&V SECTION") \
+                or tid_str.startswith("SECTION") or tid_str == "Test ID":
+            continue
+        ve_cs_records.append({
+            "Check_ID": tid_str,
+            "Description": tid_str,
+            "Status": _safe_str(r.get("Result", "")),
+            "Detail": _safe_str(r.get("Detail", "")),
+            "Group": "Cross-Source V&V",
+            "Severity": "High",
+        })
+    out["validation_cross_source"] = pd.DataFrame(ve_cs_records)
+
+    # Master status summary — verified Excel: rows 132-137 (iloc 131-136)
+    ve_full = pd.read_excel(path, sheet_name="Validation & Integrity", header=None,
                              engine=_EXCEL_ENGINE)
     try:
         out["validation_summary"] = {
-            "Total_Checks":  int(_safe_float(ve_full.iloc[102, 1])),
-            "Pass_Count":    int(_safe_float(ve_full.iloc[103, 1])),
-            "Fail_Count":    int(_safe_float(ve_full.iloc[104, 1])),
-            "Critical_Fail": int(_safe_float(ve_full.iloc[105, 1])),
-            "Overall_Status":_safe_str(ve_full.iloc[106, 1], "✓ PASS"),
+            "Total_Checks":  int(_safe_float(ve_full.iloc[131, 1])),
+            "Pass_Count":    int(_safe_float(ve_full.iloc[132, 1])),
+            "Fail_Count":    int(_safe_float(ve_full.iloc[133, 1])),
+            "Critical_Fail": int(_safe_float(ve_full.iloc[134, 1])),
+            "Overall_Status":_safe_str(ve_full.iloc[136, 1], "✅ ALL CHECKS PASS"),
         }
     except Exception:
+        # Fallback: combine VJF count + cross-source count
+        all_records = ve_records + ve_cs_records
         out["validation_summary"] = {
-            "Total_Checks": len(ve_records),
-            "Pass_Count":   sum(1 for r in ve_records if r["Status"] == "PASS"),
-            "Fail_Count":   sum(1 for r in ve_records if r["Status"] != "PASS"),
+            "Total_Checks": len(all_records),
+            "Pass_Count":   sum(1 for r in all_records if r["Status"] == "PASS"),
+            "Fail_Count":   sum(1 for r in all_records if r["Status"] not in ("PASS", "")),
             "Critical_Fail": 0,
-            "Overall_Status": "✓ PASS",
+            "Overall_Status": "✅ ALL CHECKS PASS",
         }
 
     # ─── Renewal & Review Calendar ──────────────────────────────────────
@@ -706,7 +775,7 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
                              header=2, engine=_EXCEL_ENGINE)
     ren_records = []
     for _, r in ren_raw.iterrows():
-        sno = pd.to_numeric(r.get("S.No"), errors="coerce")
+        sno = pd.to_numeric(r.get("#", r.get("S.No")), errors="coerce")
         if pd.isna(sno):
             continue
         ren_records.append({
@@ -717,7 +786,7 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
             "Validity_Maturity": _safe_ts(r["Validity / Maturity"]),
             "Days": int(_safe_float(r["Days"])),
             "Status": _safe_str(r["Status"]),
-            "Action": _safe_str(r["Action"]),
+            "Action": _safe_str(r.get("Action Required", r.get("Action", ""))),
         })
     out["renewal_calendar"] = pd.DataFrame(ren_records)
 
@@ -732,10 +801,10 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         sec_records.append({
             "Lender": str(lender),
             "Facilities_Count": int(_safe_float(r["# Facilities"])),
-            "Sanctioned": _safe_float(r["Sanctioned ₹ Cr"]),
-            "Guarantee": _safe_str(r["Personal/Corp Guarantee"]),
-            "Charge_Type": _safe_str(r["Charge Type"]),
-            "Security_Description": _safe_str(r["Security Description"]),
+            "Sanctioned": _safe_float(r.get("Sanctioned (₹ Cr)", r.get("Sanctioned ₹ Cr"))),
+            "Guarantee": _safe_str(r.get("Guarantees", r.get("Personal/Corp Guarantee", ""))),
+            "Charge_Type": _safe_str(r.get("Charge Type Summary", r.get("Charge Type", ""))),
+            "Security_Description": _safe_str(r.get("Full Security Description", r.get("Security Description", ""))),
         })
     out["security_matrix"] = pd.DataFrame(sec_records)
 
@@ -751,12 +820,12 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
             "S_No": int(no),
             "Lender": _safe_str(r["Lender"]),
             "Facility": _safe_str(r["Facility"]),
-            "Currency": _safe_str(r["Ccy"]),
+            "Currency": _safe_str(r.get("CCY", r.get("Ccy", "INR"))),
             "Benchmark": _safe_str(r["Benchmark / Reference Rate"]),
             "Spread_BPS": _safe_float(r["Spread (bps)"]),
             "Effective_Rate": _safe_float(r["Eff. Rate p.a."]),
             "Rate_Type": _safe_str(r["Rate Type"]),
-            "Source": _safe_str(r["Source"]),
+            "Source": _safe_str(r.get("Sanction Reference", r.get("Source", ""))),
         })
     out["debt_pricing"] = pd.DataFrame(dp_records)
 

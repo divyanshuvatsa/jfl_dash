@@ -221,7 +221,7 @@ except ImportError:
     pdf_text = pdf.decode("latin-1", errors="ignore")
 check("PDF embeds 4,466 (Sanctioned Debt)",       "4,466" in pdf_text)
 check("PDF embeds 3,626 (Adjusted Consortium)",   "3,626" in pdf_text)
-check("PDF embeds WAC ~9.16% (or 9.15%)",         "9.16%" in pdf_text or "9.15%" in pdf_text)
+check("PDF embeds WAC ~8.62%",                   "8.62%" in pdf_text or "8.6%" in pdf_text)
 
 
 # ═══════════════════════════════════════════════════════════════════════

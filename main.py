@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
     menu_items={
         "About": "JFL Debt Monitoring Dashboard — built on the JCL reference architecture. "
-                 "Single source of truth: JFL_Debt_Model_Final.xlsx (v11, May 2026).",
+                 "Single source of truth: JFL_Debt_Model_Final.xlsx (verified — iterations 1–3 applied).",
     },
 )
 
@@ -139,7 +139,7 @@ import pandas as pd
 st.markdown(f"""
 <div style='margin-top:40px;padding-top:20px;border-top:1px solid #1E293B;
             text-align:center;color:#64748B;font-size:0.78rem;'>
-    JFL Debt Monitor · v11 · As-of {pd.Timestamp(data['as_of_date']).strftime('%d-%b-%Y')} ·
+    JFL Debt Monitor · v12 · As-of {pd.Timestamp(data['as_of_date']).strftime('%d-%b-%Y')} ·
     Source of truth: <code>{data['excel_path'].split('/')[-1]}</code> ·
     Validation: {data['validation_summary'].get('Pass_Count', '—')}/{data['validation_summary'].get('Total_Checks', '—')} PASS ·
     Confidential — Treasury / Senior Management / Audit

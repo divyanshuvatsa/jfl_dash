@@ -318,10 +318,10 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
                        util_change_pct: float = 0) -> Dict[str, Any]:
     """Apply rate/spread/utilisation shocks and recompute annual cost per facility.
 
-    Mirrors Excel Scenario Analysis ground truth:
-      Bucket 1 base interest = ₹358.611 Cr
-      Stress (+100bps rate, +25bps spread, +10% util) → ₹448.32 Cr
-      Severe (+200bps rate, +50bps spread, +20% util) → ₹547.81 Cr
+    Mirrors Excel Scenario Analysis ground truth (verified Excel post-iteration-3):
+      Bucket 1 base interest    = ₹337.696 Cr
+      Stress (+100bps / +25bps / +10% util) → ₹425.31 Cr
+      Severe (+200bps / +50bps / +20% util) → ₹522.72 Cr
     """
     rate_shock = rate_shock_bps / 10000
     spread_shock = spread_shock_bps / 10000
@@ -443,7 +443,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
     """Single entry point for the dashboard to obtain the active covenant view.
 
     When no stress is applied (default), this returns the Excel-stored Actual /
-    Status values — which are TEV-validated and audit-quality (88 PASS / 0 FAIL
+    Status values — which are TEV-validated and audit-quality (120 PASS / 0 FAIL
     in the Validation Engine).
 
     When stress is applied, the engine recomputes from the shocked financials.
@@ -519,7 +519,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
             return pd.DataFrame(rows)
 
     # ── Stress active — apply proportional shock to stored Excel baseline ──
-    # Rationale: Excel's stored Actual values are audit-quality (V&V 87/87 PASS).
+    # Rationale: Excel's stored Actual values are audit-quality (V&V 120/120 PASS).
     # The TEV-projected DSCR/ISCR/FACR etc. use a consultant-built formula that
     # we cannot exactly reproduce from raw financial inputs. So we use ratio
     # scaling: compute the SAME formula at stress=0 baseline AND under stress,

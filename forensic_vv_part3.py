@@ -97,9 +97,9 @@ for r in range(3, 15):
 
 # Excel-direct: Interest Summary
 ws_is = wb['Interest Schedule']
-# Total Run-Rate from Excel I54 (named range TotalIntComm)
-total_xl = ws_is['I54'].value
-check(f"  Excel I54 (TotalIntComm) = {total_xl}  matches loader {data['interest_summary']['Total_Interest_Commission']}",
+# Total Run-Rate from Excel D55 (named range TotalIntComm)
+total_xl = ws_is['D55'].value
+check(f"  Excel D55 (TotalIntComm) = {total_xl}  matches loader {data['interest_summary']['Total_Interest_Commission']}",
        abs(float(total_xl) - data['interest_summary']['Total_Interest_Commission']) < 0.01)
 
 # Excel-direct: FY29 TEV values
@@ -251,7 +251,7 @@ if len(hsbc_b4):
     # Critical: this O/S must NOT contribute to Bucket 1 Interest
     isum_b1 = data["interest_summary"]["Bucket1_Interest"]
     check(f"HSBC B4 not in Bucket 1 Interest (B1=₹{isum_b1:.2f})",
-           abs(isum_b1 - 358.611) < 0.01)
+           abs(isum_b1 - 337.696) < 0.01)
 
 
 # ═══════════════════════════════════════════════════════════════════════
@@ -323,7 +323,7 @@ proc = subprocess.Popen(
      "--server.headless=true", "--server.port=8770",
      "--browser.gatherUsageStats=false"],
     stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-    cwd="/home/claude/work/jfl_dash",
+    cwd=os.path.dirname(os.path.abspath(__file__)),
     text=True,
 )
 time.sleep(12)
