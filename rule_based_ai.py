@@ -317,7 +317,7 @@ def answer_board_summary(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
                 f"NFB Contingent {_inr(t['NFB_Contingent'], 0)} off-B/S.")
     out.append(f"3. **Covenants**: {compliant}/{len(cov_df)} compliant. "
                 f"{breach} breached, {near} near/watch, {pending} pending. "
-                f"FY29 TEV projection compliance climbs to ~43/44 once plant achieves COD.")
+                f"FY29 TEV projection: 43/46 compliant (3 near-breach on rating/promoter thresholds) once plant achieves COD.")
     out.append(f"4. **Term Loans**: 7 TLs totalling ₹3,816 Cr sanctioned. "
                 f"Repayments start FY27, peak ~FY30-FY38 at ₹325 Cr/yr principal. "
                 f"RBL ₹200 Cr bullet matures Nov-2026.")
@@ -357,7 +357,8 @@ def answer_fy25_breaches(data: Dict[str, Any]) -> str:
         f"- TL repayments start FY27, no principal due during FY25\n\n"
         f"All consortium covenants (DSCR ≥ 1.25, ISCR ≥ 2.00, LTD/EBITDA ≤ 4.00) are tested "
         f"**from FY29 onwards** (post-COD), so the FY25 breaches are structural, not a credit concern.\n\n"
-        f"The **TEV-projected FY29** view (see Covenants tab toggle) shows **43/44 compliant**, "
+        f"The **TEV-projected FY29** view (see Covenants tab toggle) shows **43/46 compliant** with **3 near-breach** "
+        f"(IDFC Rating, ICICI WC Rating, RBL Promoter Contribution Share-Capital-only reading); "
         f"the model substitutes audit numbers with TEV projections once the plant is operational."
     )
 

@@ -6,7 +6,7 @@ Reads pre-computed values from the Excel:
   - Lender Summary (5-bucket totals: B1 FB Mains, B2 NFB Mains, B3 FD-Backed,
     B4 Uncommitted, Hedge memo; plus Adjusted Consortium = B1+B2 - ICICI TL takeover)
   - Covenant Tracker (44 active covenants - consortium-aggregated FY29 TEV actuals)
-  - FY29 Covenant Compliance - TEV-projected (44 covenants on FY29 basis)
+  - FY29 Covenant Compliance - TEV-projected (46 covenants on FY29 basis)
   - TEV Inputs (full FY23-FY38 P&L / BS / debt schedule)
   - Repayment Schedule (quarterly, Q1 FY24 to Q4 FY39, 7 TLs)
   - Interest Schedule (per-facility annual cost)
@@ -337,10 +337,11 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
             continue
         lender_str = str(lender_v).strip()
         # Skip section headers / summary rows (Covenant Tracker has a SUMMARY
-        # block at rows 49+ with "Total Covenants", "Live - Compliant", etc.)
+        # block at rows 49+ with "Total Covenants", "Live, Compliant", etc.
+        # Note the COMMA after "Live" in those summary labels — check both forms.)
         if lender_str.startswith(("[REMOVED", "Covenant Dashboard", "Total ",
                                   "Compliant", "Near", "Breached", "Pending",
-                                  "Portfolio", "Live ", "Not Yet Due",
+                                  "Portfolio", "Live ", "Live,", "Not Yet Due",
                                   "Category", "COVENANT SUMMARY", "SUMMARY")):
             continue
 

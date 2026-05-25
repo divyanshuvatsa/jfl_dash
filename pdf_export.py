@@ -231,8 +231,8 @@ def generate_board_memo(data: Dict[str, Any], cov_df: pd.DataFrame,
     notes = [
         f"<b>1. Pre-COD context.</b> JFL is a 2.0 MTPA greenfield steel project; "
         f"DCCO 01-Apr-2026. Most consortium covenants first test from FY29 onwards (post-COD). "
-        f"The FY29 TEV-projected basis shows 43/44 compliant with 1 near breach "
-        f"(ICICI WC Rating).",
+        f"The FY29 TEV-projected basis shows {compliant}/{len(cov_df)} compliant with {near} near-breach "
+        f"covenant(s).",
         f"<b>2. ICICI TL takeover.</b> ICICI Rs. 840 Cr substitutes for existing consortium TL "
         f"rather than adding new debt. Adjusted Consortium Debt = Rs. {data['totals']['Adjusted_Consortium']:,.0f} Cr "
         f"is the economic representation.",

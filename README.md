@@ -15,8 +15,8 @@ a 2.0 MTPA greenfield steel project at Kalinga Nagar, Odisha.
   - Hedge memo (UBI Forward): INR 75 Cr
 - Sanctioned Debt (B1+B2): INR 4,666 Cr.
 - Adjusted Consortium Debt: INR 3,826 Cr after netting out ICICI TL takeover of INR 840 Cr.
-- Covenant basis: FY29 TEV (post-COD projected), 43 of 44 compliant, 1 near breach
-  (ICICI WC Rating at threshold). First formal covenant test from FY29.
+- Covenant basis: FY29 TEV (post-COD projected), 43 of 46 compliant, 3 near breach
+  (IDFC Rating, ICICI WC Rating, RBL Promoter Contribution under Share-Capital-only reading; all at threshold). First formal covenant test from FY29.
 - Stress testing: rate, spread, utilisation, EBITDA, debt shocks.
 - AI Analyst with two modes:
   - Quick Answers: a set of pre-built JFL portfolio queries

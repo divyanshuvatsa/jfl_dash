@@ -112,7 +112,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
 - All 44 facility records
 - 9 benchmark rates
 - FY25 audit financials + FY29 TEV projections
-- 44 active covenants (FY29 TEV projected)
+- 46 active covenants on FY29 TEV basis (44 on FY25A basis)
 - Repayment & Interest schedules (7 TLs)
 - 5-bucket totals (B1/B2/B3/B4/Hedge) + B0 sub-limits
 
@@ -127,7 +127,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
             options=["FY29E (TEV)", "FY25A"],
             index=0, horizontal=True, key="basis_input",
             help=("FY29E (TEV): post-COD TEV-projected financials (used for "
-                  "covenant testing, 43/44 Compliant). "
+                  "covenant testing, 43/46 Compliant with 3 Near Breach). "
                   "FY25A: pre-COD audit baseline financials.")
         )
 
@@ -247,7 +247,7 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
         verdict, color = "PRE-COD WATCH", "#F59E0B"
         narrative = (f"On <b>{controls['basis']}</b> basis, <b>{breach} covenants</b> show as breached, "
                      f"reflecting pre-operational reality (EBITDA still negative at FY25). "
-                     f"FY29 TEV projection reaches 43/44 compliant post-COD.")
+                     f"FY29 TEV projection reaches {compliant}/{len(cov_df)} compliant post-COD.")
     elif breach > 0 or near > 0:
         verdict, color = "MONITOR CLOSELY", "#F59E0B"
         narrative = (f"Sanctioned debt <b>{inr(t['Bucket1_Sanctioned_Debt'])}</b>. "
@@ -459,7 +459,7 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
         </div>
         <div style='padding:14px 0;border-top:1px solid #334155;'>
             <div style='font-size:0.78rem;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;'>Basis Note</div>
-            <div style='font-size:0.9rem;color:#CBD5E1;'>The verified Excel tracks covenants on the FY29 TEV-projected basis (post-COD). FY25 audit covenant testing is not separately maintained since most JFL covenants first test in FY27/FY29 (post-COD). Result: <b>43 of 44 Compliant + 1 Near Breach</b> (ICICI WC Rating).</div>
+            <div style='font-size:0.9rem;color:#CBD5E1;'>The verified Excel tracks covenants on the FY29 TEV-projected basis (post-COD). FY25 audit covenant testing is not separately maintained since most JFL covenants first test in FY27/FY29 (post-COD). Result: <b>{compliant} of {len(cov_df)} Compliant + {near} Near Breach</b>.</div>
         </div>
         """), unsafe_allow_html=True)
 
