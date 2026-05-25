@@ -9,16 +9,19 @@ Odisha. Built on the JCL reference architecture, adapted for JFL's
 
 - Tracks 44 facilities across 9 lenders (UBI, Indian Bank, RBL, YES Bank,
   IDFC First, ICICI (WC), ICICI (TL), HDFC, HSBC).
-- Five-bucket framework: B1 (FB Mains ₹3,916 Cr) · B2 (NFB Mains ₹550 Cr) ·
-  B3 (FD-Backed ₹150 Cr) · B4 (Uncommitted ₹1,000 Cr) · Hedge memo ₹75 Cr.
-- ICICI TL takeover (₹840 Cr) → Adjusted Consortium Debt ₹3,626 Cr.
+- Five-bucket framework: B1 (FB Mains ₹4,116 Cr) · B2 (NFB Mains ₹550 Cr) ·
+  B3 (FD-Backed ₹150 Cr) · B4 (Uncommitted ₹0 Cr) · Hedge memo ₹75 Cr.
+  HSBC's ₹1,000 Cr face exposure is reclassified into B1 at ₹200 Cr
+  post 20% haircut per Market-Practice assumption MP-13.
+- Sanctioned Debt (B1 + B2) = ₹4,666 Cr.
+- ICICI TL takeover (₹840 Cr) → Adjusted Consortium Debt ₹3,826 Cr.
 - Covenant basis: **FY29E TEV** (post-COD TEV-projected, 43/44 compliant with
   1 Near Breach — ICICI WC Rating). The verified Excel tracks covenants on the
   FY29 TEV basis only; FY25 audit financials (EBITDA −₹5.45 Cr, TNW ₹993.45 Cr)
   are available in the Instructions tab for context but covenant statuses
   are not separately re-computed under FY25 audit basis.
 - Interactive stress testing: rate, spread, utilisation, EBITDA, debt shocks.
-- 14 Management Flags register + 120-check Validation Engine status (120/120 PASS).
+- 18 Management Flags register + 108-check Validation Engine status (108/108 PASS).
 - AI Analyst (rule-based, deterministic Q&A) covering 15 JFL-specific topics.
 - PDF Board Memo, CSV exports, historical snapshot tracking.
 
@@ -39,7 +42,7 @@ JFL_Debt_Dashboard/
 ├── verify_all.py              # V&V test suite
 ├── requirements.txt
 ├── .streamlit/config.toml     # Dark theme settings
-├── JFL_Debt_Model_Final.xlsx  # Single source of truth (verified — iterations 1–3 applied)
+├── JFL_Debt_Model_Final.xlsx  # Single source of truth (verified)
 └── README.md
 ```
 
@@ -75,13 +78,13 @@ hard-coded numbers.
 |---|---|
 | **📊 Overview** | Hero verdict, 12 KPI cards (5 bucket + 4 health + 3 concentration), lender concentration donut, 5-bucket pie, per-lender stacked composition, facility cost contribution, FB rate vs WAC. |
 | **🛡️ Covenants** | Status pie, binding-covenant headroom chart, TEV-projected forward trajectory (FY27→FY38), attention items, full per-lender table on FY29 TEV basis. |
-| **📅 Schedule** | Sub-nav: (a) Repayment Profile — TL maturity panel, annual debt-service stacked bar, cumulative run-down, quarterly schedule, facility browser. (b) Renewals — interactive filters, urgency bucket KPIs, gantt timeline, action items. (c) Mgmt Flags & Validation — 14 flag cards, 120-check status register. |
+| **📅 Schedule** | Sub-nav: (a) Repayment Profile — TL maturity panel, annual debt-service stacked bar, cumulative run-down, quarterly schedule, facility browser. (b) Renewals — interactive filters, urgency bucket KPIs, gantt timeline, action items. (c) Mgmt Flags & Validation — 18 flag cards, 108-check status register. |
 | **🤖 AI Analyst** | 4 proactive insight cards + 15 suggested questions + free-form chat + conversation history. |
 | **🔧 Tools** | Sub-nav: (a) Export — PDF board memo + 6 CSV downloads + reconciliation summary. (b) Snapshots — capture state, compare across time, JSON backup/restore. |
 
 ## Validation
 
-The Excel ships with a **120-check Validation Engine** (120/120 PASS). The dashboard
+The Excel ships with a **108-check Validation Engine** (108/108 PASS). The dashboard
 reads its status directly from the workbook and surfaces it in the header
 badge. Independent V&V can be run from the command line:
 

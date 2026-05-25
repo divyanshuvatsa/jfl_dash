@@ -8,7 +8,7 @@ Tests that the first forensic run didn't cover:
   - Hedge memo (Bucket "H") handled correctly
   - All 44 covenants from FY25 and FY29 tracker resolve to non-empty Lender + Covenant
   - Bucket-4 uncommitted (HSBC) excluded from run-rate but tracked in totals
-  - ICICI TL takeover adjustment: 4466 - 840 = 3626 reconciles
+  - ICICI TL takeover adjustment: 4666 - 840 = 3826 reconciles
   - DSCR for IDFC (different formula) differs from consortium
   - Repayment schedule sum-of-RBL = 200 (single bullet event)
   - Annual Run-Rate visible in UI = Excel ground truth
