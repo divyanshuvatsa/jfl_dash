@@ -236,7 +236,7 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         "ATNW":                _tev_row(19),     # = TNW for JFL
         "Current Assets":      _tev_row(33),     # Total Current Assets
         "Current Liabilities": _tev_row(24),     # Total Current Liabilities
-        "TOL":                 _tev_row(34) - _tev_row(19),  # Total Assets − Total Equity
+        "TOL":                 _tev_row(20) + _tev_row(24),  # LTD + Current Liabilities (DTL-excluded, matches Excel covenant tracker TOL/TNW = 1.7216)
         "Interest Expense":    _tev_row(10) + _tev_row(11),  # WC interest + TL interest
         "Fixed Assets":        _tev_row(28),     # Net Block
         "Secured Debt":        _tev_row(20),     # Term Loan LT
