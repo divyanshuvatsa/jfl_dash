@@ -1,4 +1,4 @@
-"""Historical snapshots — save current state, compare against past states.
+"""Historical snapshots, save current state, compare against past states.
 
 Storage: st.session_state (in-memory) + JSON export/import for cross-session
 persistence. Mirrors JCL snapshots.py; adapted for JFL's 5-bucket framework

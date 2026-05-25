@@ -1,5 +1,5 @@
 """
-Scenario engine — JFL adaptation.
+Scenario engine, JFL adaptation.
 
 Applies user shocks (rate, spread, utilisation, EBITDA, debt) on top of the
 Excel base values to recompute covenants and interest dynamically.
@@ -148,7 +148,7 @@ def evaluate_status(actual: float, operator: str, threshold: float) -> str:
       Compliant:   headroom ≥ 10%
 
     The Excel uses 0% headroom → Near Breach (e.g. ICICI rating A- = threshold A-,
-    per VJF-v7-11). This implementation preserves that edge case.
+    per the original Excel logic). This implementation preserves that edge case.
     """
     if pd.isna(actual) or actual is None:
         return "Pending Input"
@@ -176,10 +176,10 @@ def evaluate_status(actual: float, operator: str, threshold: float) -> str:
 
 
 def _is_market_data_covenant(name: str) -> bool:
-    """Covenants tied to external/market data — cannot be re-derived from financials.
+    """Covenants tied to external/market data, cannot be re-derived from financials.
 
     These MUST retain their Excel-stored Actual under stress because they depend on
-    JSL share-market data, pledge percentages, etc. — not on borrower financials.
+    JSL share-market data, pledge percentages, etc., not on borrower financials.
     """
     if not isinstance(name, str):
         return False
@@ -188,7 +188,7 @@ def _is_market_data_covenant(name: str) -> bool:
 
 
 def _is_rating_covenant(name: str, op: str) -> bool:
-    """Rating covenants — threshold is an ordinal (BBB=10, A-=14, etc.)."""
+    """Rating covenants, threshold is an ordinal (BBB=10, A-=14, etc.)."""
     n = str(name).lower()
     o = str(op).lower()
     if "rating" in n: return True
@@ -225,15 +225,15 @@ def recompute_covenants(base_covenants: pd.DataFrame, financials: Dict[str, floa
 
     Logic dispatch by covenant class:
       1. Numeric financial ratios (DSCR, FACR, ISCR, LTD/EBITDA, LTD/Equity,
-         TOL/TNW, Current Ratio, Total Debt/EBITDA) — recomputed from shocked
+         TOL/TNW, Current Ratio, Total Debt/EBITDA), recomputed from shocked
          financials.
-      2. Rating covenants — use rating ordinal from financials; compare to
+      2. Rating covenants, use rating ordinal from financials; compare to
          the numeric threshold (which is already an ordinal in the JFL Excel).
-      3. Market-data covenants (JSL FMV / Pledge) — CANNOT be recomputed.
+      3. Market-data covenants (JSL FMV / Pledge), CANNOT be recomputed.
          Inherit stored Actual & Status from the Excel.
-      4. Quasi Equity Cap / Promoter Contribution — use stored helpers
+      4. Quasi Equity Cap / Promoter Contribution, use stored helpers
          (audit Note 16+18 → ₹856.76 promoter ICDs; equity ₹993.45).
-      5. Anything else — Pending Input.
+      5. Anything else, Pending Input.
 
     `stored_actuals` (optional dict {(lender, covenant): actual}) lets market-data
     covenants inherit their pre-stress baseline. If not supplied, the function
@@ -242,7 +242,7 @@ def recompute_covenants(base_covenants: pd.DataFrame, financials: Dict[str, floa
     ratios = calculate_all_ratios(financials, ebitda_change_pct, interest_change_pct, debt_change_pct)
     rating_str = financials.get("External Rating", "")
     # When rating is missing/Pending, use A- (=14) as the working assumption per
-    # ICICI WC / RBL covenant baselines (Excel uses this in Validation Engine).
+    # ICICI WC / RBL covenant baselines.
     rating_ord = rating_to_ordinal(rating_str) if rating_str and rating_str != "Pending" else 14
 
     rows = []
@@ -322,7 +322,7 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
     reclassification & ÷5 haircut):
       Bucket 1 base interest    = ₹376.611 Cr (incl HSBC ₹200 Cr Combined Limit
                                   at 9.00% = ₹18 Cr; HSBC carries Category=NFB
-                                  but Bucket=1 by reclassification — MP-13).
+                                  but Bucket=1 by reclassification).
       Stress (+100bps / +25bps / +10% util) → ₹470.867 Cr
       Severe (+200bps / +50bps / +20% util) → ₹575.413 Cr
     """
@@ -357,13 +357,13 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
 
         # Bucket aggregation matching Excel Interest Summary SUMIF (D52/D53/D54):
         # B1 = FB Mains (Term + WC FB) PLUS HSBC ₹200 Cr Combined Limit (Cat=NFB,
-        #      reclassified to B1 per MP-13). All B1 rows get utilisation factor.
-        # B2 = NFB Mains (LC parents — ICICI WC LC, HDFC LC) — commission on
+        #      reclassified to B1). All B1 rows get utilisation factor.
+        # B2 = NFB Mains (LC parents, ICICI WC LC, HDFC LC), commission on
         #      sanctioned face, no util factor.
-        # B3 = FD-Backed FB — already 100% utilised by structure, no util factor.
+        # B3 = FD-Backed FB, already 100% utilised by structure, no util factor.
         # B4 = Uncommitted (post-HSBC reclassification: B4 is empty / ₹0).
-        # H  = Hedge memo — excluded from cost.
-        # 0  = Sub-limit — already covered by parent, excluded from cost.
+        # H  = Hedge memo, excluded from cost.
+        # 0  = Sub-limit, already covered by parent, excluded from cost.
         if bucket == 1:
             stressed_os = eff_os * util_factor
             annual_cost = stressed_os * shocked_rate
@@ -413,7 +413,7 @@ def recompute_interest(facility_master: pd.DataFrame, benchmark_rates: Dict[str,
 def run_scenario(data: Dict[str, Any], rate_shock_bps: float, spread_shock_bps: float,
                  ebitda_change_pct: float, debt_change_pct: float = 0,
                  basis: str = "FY29E (TEV)", util_change_pct: float = 0) -> Dict[str, Any]:
-    """Full scenario run — returns base + stressed metrics."""
+    """Full scenario run, returns base + stressed metrics."""
     fin = data["financials"].get(basis, data["financials"]["FY25A"])
     base_int = recompute_interest(data["facility_master"], data["benchmark_rates"], 0, 0, 0)
     base_cov = resolve_covenants(data, basis, stress_active=False)
@@ -447,8 +447,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
     """Single entry point for the dashboard to obtain the active covenant view.
 
     When no stress is applied (default), this returns the Excel-stored Actual /
-    Status values — which are TEV-validated and audit-quality (108 PASS / 0 FAIL
-    in the Validation Engine).
+    Status values directly.
 
     When stress is applied, the engine recomputes from the shocked financials.
 
@@ -476,7 +475,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
                     elif op in ("<", "<="):
                         headroom = threshold - actual
                         hr_pct = (headroom / threshold * 100) if threshold > 0 else 0
-                # Excel "Compliant ⚠ F-15" → normalize to "Compliant"
+                # Excel may have "Compliant" with trailing marker - normalize
                 if isinstance(status, str) and status.startswith("Compliant"):
                     status_norm = "Compliant"
                 else:
@@ -492,7 +491,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
                 })
             return pd.DataFrame(rows)
         else:
-            # FY25 Audit basis — use Covenant Tracker stored actuals
+            # FY25 Audit basis, use Covenant Tracker stored actuals
             ct = data["covenants"].copy()
             rows = []
             for _, c in ct.iterrows():
@@ -522,7 +521,7 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
                 })
             return pd.DataFrame(rows)
 
-    # ── Stress active — apply proportional shock to stored Excel baseline ──
+    # ── Stress active, apply proportional shock to stored Excel baseline ──
     # Rationale: Excel's stored Actual values are audit-quality (V&V 108/108 PASS).
     # The TEV-projected DSCR/ISCR/FACR etc. use a consultant-built formula that
     # we cannot exactly reproduce from raw financial inputs. So we use ratio
@@ -564,12 +563,12 @@ def resolve_covenants(data: Dict[str, Any], basis: str,
         b = base_lookup.get(key)
         s = stress_lookup.get(key)
 
-        # Market-data covenants (JSL FMV / Pledge) — preserve stored value untouched.
+        # Market-data covenants (JSL FMV / Pledge), preserve stored value untouched.
         if _is_market_data_covenant(row["Covenant"]):
             rows.append(row.to_dict())
             continue
 
-        # Rating covenants — stored value IS the rating ordinal; doesn't move under stress.
+        # Rating covenants, stored value IS the rating ordinal; doesn't move under stress.
         if _is_rating_covenant(row["Covenant"], row.get("Operator", "")):
             rows.append(row.to_dict())
             continue

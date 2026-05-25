@@ -1,5 +1,5 @@
 """
-Gemini AI Analyst — bring-your-own-API-key conversational analyst.
+Gemini AI Analyst, bring-your-own-API-key conversational analyst.
 
 Uses Google's Generative Language REST API directly (no SDK dependency).
 The user supplies their own API key via the dashboard sidebar; the key is
@@ -29,7 +29,7 @@ GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 # ──────────────────────────────────────────────────────────────────────
-# CONTEXT BUILDER — distil the entire dashboard into a Gemini-friendly brief
+# CONTEXT BUILDER, distil the entire dashboard into a Gemini-friendly brief
 # ──────────────────────────────────────────────────────────────────────
 def build_portfolio_context(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     """Build a structured text brief Gemini can reason about.
@@ -41,10 +41,8 @@ def build_portfolio_context(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     t   = data["totals"]
     i   = data["interest_summary"]
     ls  = data["lender_summary"]
-    flg = data.get("management_flags", pd.DataFrame())
     fy25 = data["financials"].get("FY25A", {})
     fy29 = data["financials"].get("FY29E (TEV)", {})
-    vs  = data.get("validation_summary", {})
     fm  = data["facility_master"]
 
     # Top lenders
@@ -61,14 +59,7 @@ def build_portfolio_context(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     near_breach_text = ""
     if len(near_breach_rows):
         nb = near_breach_rows.iloc[0]
-        near_breach_text = f"\n  ⚠ Near Breach: {nb['Lender']} — {nb['Covenant']} (Threshold {nb.get('Operator','')} {nb.get('Threshold','')})"
-
-    # Active management flags
-    open_flg = flg[flg["Status"].isin(["Open", "Open (linked F-01)"])] if len(flg) else flg
-    high_open = open_flg[open_flg["Severity"].isin(["High", "Critical"])] if len(open_flg) else open_flg
-    flag_lines = []
-    for _, r in high_open.iterrows():
-        flag_lines.append(f"  • {r['Flag #']} [{r['Severity']}] {r['Category']}: {str(r.get('Description',''))[:140]}")
+        near_breach_text = f"\n  Near Breach: {nb['Lender']}, {nb['Covenant']} (Threshold {nb.get('Operator','')} {nb.get('Threshold','')})"
 
     ctx = f"""You are a senior debt portfolio analyst answering questions about Jindal Ferrous Limited (JFL), a 2.0 MTPA greenfield steel project at Kalinga Nagar, Odisha. Project cost ₹4,084 Cr on 2:1 D:E ratio. Currently pre-COD (target FY27).
 
@@ -80,7 +71,7 @@ FIVE-BUCKET FRAMEWORK:
   Sanctioned Debt (B1+B2): ₹{t['Bucket1_Sanctioned_Debt']:,.0f} Cr
     • FB Mains (B1):         ₹{t['FB_Mains_B1']:,.0f} Cr  (7 term loans + WC fund-based)
     • NFB Mains (B2):        ₹{t['NFB_Mains_B2']:,.0f} Cr  (LCs/BGs as main lines)
-  NFB Contingent (sub-limits): ₹{t['NFB_Contingent']:,.0f} Cr  (carved from parents — not additive)
+  NFB Contingent (sub-limits): ₹{t['NFB_Contingent']:,.0f} Cr  (carved from parents, not additive)
   FD-Backed (B3):              ₹{t['FD_Backed_B3']:,.0f} Cr  (overdrafts secured by FD)
   Uncommitted (B4) [HSBC]:     ₹{t['Uncommitted_B4']:,.0f} Cr  (bank may cancel anytime)
   Hedge Memo (UBI Fwd):        ₹{t['Hedge_Memo']:,.0f} Cr  (derivative, not debt)
@@ -110,24 +101,18 @@ KEY COVENANT RATIOS (FY29 TEV consortium-aggregated):
   LTD/Equity: 1.09x (vs ≤2.00x, +45% headroom)
 
 FY25 AUDITED (pre-COD reality):
-  EBITDA: ₹{fy25.get('EBITDA', 0):.2f} Cr (negative — construction phase)
+  EBITDA: ₹{fy25.get('EBITDA', 0):.2f} Cr (negative, construction phase)
   TNW: ₹{fy25.get('TNW', 0):.2f} Cr
   Total Debt: ₹{fy25.get('Total Debt', 0):.2f} Cr
 
 FY29 TEV PROJECTION (post-COD):
-  EBITDA: ₹{fy29.get('EBITDA', 0):.2f} Cr
-  TNW: ₹{fy29.get('TNW', 0):.2f} Cr
-
-HIGH-SEVERITY MANAGEMENT FLAGS (open, requiring action):
-{chr(10).join(flag_lines) if flag_lines else '  (none)'}
+  EBITDA: INR {fy29.get('EBITDA', 0):.2f} Cr
+  TNW: INR {fy29.get('TNW', 0):.2f} Cr
 
 KEY DEADLINES:
-  • RBL Bank ₹200 Cr Term Loan — BULLET maturity 13-Nov-2026 (refinance required)
-  • Repayment start: 30-Jun-2027 (Indian Bank: 31-Mar-2027)
-  • Repayment end: 31-Mar-2039 (16-year door-to-door)
-
-MODEL INTEGRITY:
-  Validation Engine: {vs.get('Pass_Count', 108)}/{vs.get('Total_Checks', 108)} PASS — {vs.get('Overall_Status', '✅ ALL CHECKS PASS')}
+  RBL Bank INR 200 Cr Term Loan, bullet maturity 13-Nov-2026 (refinance required)
+  Repayment start: 30-Jun-2027 (Indian Bank: 31-Mar-2027)
+  Repayment end: 31-Mar-2039 (16-year door-to-door)
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCTIONS
@@ -143,7 +128,7 @@ Use markdown for structure (headings, bullet lists, tables).
 
 
 # ──────────────────────────────────────────────────────────────────────
-# GEMINI API CALL — pure stdlib, no external dependency
+# GEMINI API CALL, pure stdlib, no external dependency
 # ──────────────────────────────────────────────────────────────────────
 def call_gemini(api_key: str, model: str, context: str, user_question: str,
                 history: List[Dict[str, str]] = None,
@@ -276,7 +261,7 @@ def ask_gemini(api_key: str, model: str, data: Dict[str, Any],
 
 
 # ──────────────────────────────────────────────────────────────────────
-# API KEY VALIDATION (lightweight — just check format)
+# API KEY VALIDATION (lightweight, just check format)
 # ──────────────────────────────────────────────────────────────────────
 def is_valid_key_format(key: str) -> bool:
     """Gemini API keys start with 'AIza' and are 39 chars long."""

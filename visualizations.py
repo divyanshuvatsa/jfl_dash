@@ -1,4 +1,4 @@
-"""Visualization helpers — JFL portfolio adapted from JCL chart suite.
+"""Visualization helpers, JFL portfolio adapted from JCL chart suite.
 
 Charts:
   - render_covenant_headroom_chart         : compliance headroom bars
@@ -20,15 +20,15 @@ from theme import LENDER_COLORS, STATUS_COLORS
 
 
 # ════════════════════════════════════════════════════════════════════
-# SHARED STYLE CONSTANTS — JFL Dashboard Polish (May 2026)
+# SHARED STYLE CONSTANTS, JFL Dashboard Polish (May 2026)
 # ════════════════════════════════════════════════════════════════════
-BG_DARK       = "#0F172A"   # slate-900 — primary background
-BG_PANEL      = "#1E293B"   # slate-800 — chart inner panel
-GRID          = "rgba(148,163,184,0.12)"  # slate-400 @ 12% — subtle gridlines
-AXIS          = "rgba(148,163,184,0.35)"  # slate-400 @ 35% — axis lines
-TEXT_PRIMARY  = "#F1F5F9"   # slate-100 — main text
-TEXT_MUTED    = "#94A3B8"   # slate-400 — secondary text
-TEXT_DIM      = "#64748B"   # slate-500 — tertiary
+BG_DARK       = "#0F172A"   # slate-900, primary background
+BG_PANEL      = "#1E293B"   # slate-800, chart inner panel
+GRID          = "rgba(148,163,184,0.12)"  # slate-400 @ 12%, subtle gridlines
+AXIS          = "rgba(148,163,184,0.35)"  # slate-400 @ 35%, axis lines
+TEXT_PRIMARY  = "#F1F5F9"   # slate-100, main text
+TEXT_MUTED    = "#94A3B8"   # slate-400, secondary text
+TEXT_DIM      = "#64748B"   # slate-500, tertiary
 
 # Coherent 8-stop palette (each chart picks the slice it needs)
 PALETTE = {
@@ -107,16 +107,16 @@ def render_covenant_headroom_chart(cov_df: pd.DataFrame, *, mode: str = "tightes
     df = df[df["headroom"].notna()].copy()
 
     if df.empty:
-        st.info("No numeric covenants to plot — all rows are pending input or rating-based.")
+        st.info("No numeric covenants to plot, all rows are pending input or rating-based.")
         return
 
     if mode == "tightest":
         df = df.sort_values("headroom").groupby("Covenant", sort=False).head(1)
         df["label"] = df["Covenant"] + "  ·  " + df["Lender"]
-        subtitle = (f"<i>Tightest instance of each ratio type — "
+        subtitle = (f"<i>Tightest instance of each ratio type, "
                     f"{len(df)} unique ratios from {len(cov_df)} total covenants.</i>")
     else:
-        df["label"] = df["Lender"] + " — " + df["Covenant"]
+        df["label"] = df["Lender"] + ", " + df["Covenant"]
         subtitle = "<i>All instances shown per lender.</i>"
 
     df = df.sort_values("headroom", ascending=True)
@@ -194,7 +194,7 @@ def render_covenant_headroom_chart(cov_df: pd.DataFrame, *, mode: str = "tightes
 # FACILITY COST CONTRIBUTION
 # ════════════════════════════════════════════════════════════════════
 def render_facility_cost_chart(data: Dict[str, Any]):
-    """Annual ₹ cost contribution by facility — where the ₹375 Cr comes from.
+    """Annual ₹ cost contribution by facility, where the ₹375 Cr comes from.
 
     Blue = interest on drawn FB principal (Bucket 1 & 3).
     Amber = commission on NFB sanctioned face (Bucket 2).
@@ -230,7 +230,7 @@ def render_facility_cost_chart(data: Dict[str, Any]):
         cost = base * rate
         rows.append({
             "Lender": r["Lender"],
-            "Label": f"{r['Lender']} — {r['Facility'][:40]}",
+            "Label": f"{r['Lender']}, {r['Facility'][:40]}",
             "Rate_Pct": rate * 100,
             "Base": base,
             "Annual_Cost": cost,
@@ -293,7 +293,7 @@ def render_fb_rate_vs_wac_chart(data: Dict[str, Any]):
     fm = fm[(fm["Effective_OS"] > 0) & ~fm["Sub_Limit_Flag"]]
     fm = fm[fm["Effective_Rate"].notna() & (fm["Effective_Rate"] > 0)]
     fm = fm[~fm["Category"].isin(["NFB", "Hedge"])]
-    # Exclude HSBC uncommitted (B4) — those rates are placeholders
+    # Exclude HSBC uncommitted (B4), those rates are placeholders
     fm = fm[fm["Bucket"] != 4]
 
     if fm.empty:
@@ -302,7 +302,7 @@ def render_fb_rate_vs_wac_chart(data: Dict[str, Any]):
 
     wac = data["interest_summary"]["Weighted_Avg_Cost"]
     fm = fm.sort_values("Effective_Rate", ascending=True)
-    fm["label"] = fm["Lender"] + " — " + fm["Facility"].str[:35]
+    fm["label"] = fm["Lender"] + ", " + fm["Facility"].str[:35]
     fm["rate_pct"] = fm["Effective_Rate"] * 100
     fm["color"] = [LENDER_COLORS.get(l, "#3B82F6") for l in fm["Lender"]]
 
@@ -437,7 +437,7 @@ JFL_TL_TRACKS = [
 
 
 def render_repayment_timeline(data: Dict[str, Any]):
-    """Cumulative TL outstanding running down over time — stacked area per TL.
+    """Cumulative TL outstanding running down over time, stacked area per TL.
 
     Uses the Excel's quarterly closing balances aggregated to FY-end.
     """
@@ -491,7 +491,7 @@ def render_renewal_timeline(data: Dict[str, Any]):
         st.info("No facilities expiring in the next 12 months.")
         return
 
-    fm["label"] = fm["Lender"] + " — " + fm["Facility"].str[:35]
+    fm["label"] = fm["Lender"] + ", " + fm["Facility"].str[:35]
     fm = fm.sort_values("days")
 
     def _color(d):
@@ -565,7 +565,7 @@ def render_renewal_timeline(data: Dict[str, Any]):
 def render_tev_trajectory(data: Dict[str, Any]):
     """TEV-projected DSCR / ISCR / FACR / LTD-EBITDA / LTD-Equity over FY27-FY38.
 
-    JFL-specific. The JCL reference didn't need this — JCL is operational.
+    JFL-specific. The JCL reference didn't need this, JCL is operational.
     JFL is pre-COD, so a forward look on the binding constraints matters.
     """
     tev = data.get("tev_ratios", {})

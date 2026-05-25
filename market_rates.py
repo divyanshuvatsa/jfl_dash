@@ -1,5 +1,5 @@
 """
-Live Market Rates — fetches current benchmark rates from public sources.
+Live Market Rates, fetches current benchmark rates from public sources.
 
 Sources (FREE, no API key):
   - USD/INR via exchangerate.host (ECB-backed)

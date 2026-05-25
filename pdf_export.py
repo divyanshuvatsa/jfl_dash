@@ -1,5 +1,5 @@
 """
-PDF board memo generator — produces a polished 2-3 page PDF summary of the
+PDF board memo generator, produces a polished 2-3 page PDF summary of the
 JFL debt portfolio. Mirrors JCL's pdf_export.py structure.
 """
 
@@ -149,39 +149,6 @@ def _covenant_table(cov_df):
     return tbl
 
 
-def _flags_table(flags):
-    """Open Management Flags."""
-    if flags.empty:
-        return None
-    open_f = flags[flags["Status"].isin(["Open", "Open (linked F-01)"])]
-    if open_f.empty:
-        return None
-    data = [["Flag", "Severity", "Category", "Description"]]
-    for _, f in open_f.head(10).iterrows():
-        data.append([f["Flag"], f["Severity"], f["Category"][:25],
-                      f["Description"][:80] + ("…" if len(f["Description"]) > 80 else "")])
-    tbl = Table(data, colWidths=[1.5*cm, 1.8*cm, 4*cm, 8.7*cm])
-    style = [
-        ("BACKGROUND", (0, 0), (-1, 0), BLUE),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTSIZE", (0, 0), (-1, -1), 7.5),
-        ("GRID", (0, 0), (-1, -1), 0.25, SLATE),
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
-        ("TOPPADDING", (0, 0), (-1, -1), 3),
-    ]
-    for i, (_, f) in enumerate(open_f.head(10).iterrows(), 1):
-        sev = f["Severity"]
-        bg = (colors.HexColor("#FEE2E2") if sev == "Critical"
-              else colors.HexColor("#FED7AA") if sev == "High"
-              else colors.HexColor("#DBEAFE") if sev == "Medium"
-              else colors.HexColor("#F1F5F9"))
-        style.append(("BACKGROUND", (1, i), (1, i), bg))
-    tbl.setStyle(TableStyle(style))
-    return tbl
-
-
 def generate_board_memo(data: Dict[str, Any], cov_df: pd.DataFrame,
                          controls: Dict[str, Any]) -> bytes:
     """Generate a polished 2-3 page PDF board memo. Returns bytes."""
@@ -189,13 +156,13 @@ def generate_board_memo(data: Dict[str, Any], cov_df: pd.DataFrame,
     doc = SimpleDocTemplate(buf, pagesize=A4,
                              leftMargin=1.5*cm, rightMargin=1.5*cm,
                              topMargin=1.5*cm, bottomMargin=1.5*cm,
-                             title="JFL Debt Monitor — Board Memo",
+                             title="JFL Debt Monitor, Board Memo",
                              author="JFL Treasury Modelling")
     ss = _styles()
     story = []
 
     # ─── Cover header ────────────────────────────────────────────────
-    story.append(Paragraph("JINDAL FERROUS LIMITED — Debt Monitor Board Memo",
+    story.append(Paragraph("JINDAL FERROUS LIMITED, Debt Monitor Board Memo",
                              ss["JFL_Title"]))
     sub = (f"As of {pd.Timestamp(data['as_of_date']).strftime('%d-%b-%Y')}  ·  "
            f"Basis: {controls.get('basis', 'FY29E (TEV)')}  ·  "
@@ -252,61 +219,28 @@ def generate_board_memo(data: Dict[str, Any], cov_df: pd.DataFrame,
 
     # ─── Section C: Covenants ───────────────────────────────────────
     story.append(PageBreak())
-    story.append(Paragraph(f"C. Covenants — Top 10 Tightest "
+    story.append(Paragraph(f"C. Covenants - Top 10 Tightest "
                              f"({compliant}/{len(cov_df)} compliant, "
                              f"{breached} breached, {near} watch/near)",
                              ss["JFL_H2"]))
     story.append(_covenant_table(cov_df))
     story.append(Spacer(1, 10))
 
-    # ─── Section D: Management Flags ────────────────────────────────
-    flags = data.get("management_flags", pd.DataFrame())
-    flag_tbl = _flags_table(flags)
-    if flag_tbl is not None:
-        story.append(Paragraph("D. Open Management Flags", ss["JFL_H2"]))
-        story.append(flag_tbl)
-        story.append(Spacer(1, 8))
-
-    # ─── Section E: Validation & Integrity status ───────────────────
-    vs = data.get("validation_summary", {})
-    if vs:
-        story.append(Paragraph("E. Validation & Integrity Status", ss["JFL_H2"]))
-        v_data = [
-            ["Total Checks",  str(vs.get("Total_Checks", "—"))],
-            ["PASS",          str(vs.get("Pass_Count", "—"))],
-            ["FAIL",          str(vs.get("Fail_Count", "—"))],
-            ["Critical FAIL", str(vs.get("Critical_Fail", "—"))],
-            ["Overall",       str(vs.get("Overall_Status", "—"))],
-        ]
-        v_tbl = Table(v_data, colWidths=[5*cm, 3*cm])
-        v_tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
-            ("GRID", (0, 0), (-1, -1), 0.25, SLATE),
-            ("FONTSIZE", (0, 0), (-1, -1), 9),
-            ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
-            ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#D1FAE5")),
-        ]))
-        story.append(v_tbl)
-        story.append(Spacer(1, 10))
-
-    # ─── Section F: Closing notes ───────────────────────────────────
-    story.append(Paragraph("F. Key Observations", ss["JFL_H2"]))
+    # ─── Section D: Closing notes ───────────────────────────────────
+    story.append(Paragraph("D. Key Observations", ss["JFL_H2"]))
     notes = [
         f"<b>1. Pre-COD context.</b> JFL is a 2.0 MTPA greenfield steel project; "
         f"DCCO 01-Apr-2026. Most consortium covenants first test from FY29 onwards (post-COD). "
-        f"The FY29 TEV-projected basis shows 43/44 Compliant with 1 Near Breach "
+        f"The FY29 TEV-projected basis shows 43/44 compliant with 1 near breach "
         f"(ICICI WC Rating).",
         f"<b>2. ICICI TL takeover.</b> ICICI Rs. 840 Cr substitutes for existing consortium TL "
         f"rather than adding new debt. Adjusted Consortium Debt = Rs. {data['totals']['Adjusted_Consortium']:,.0f} Cr "
         f"is the economic representation.",
-        f"<b>3. Bridge facility.</b> RBL Rs. 200 Cr is a 12-month BULLET maturing 13-Nov-2026. "
-        f"Refinance plan required (Flag F-02).",
-        f"<b>4. HSBC realistic-exposure haircut.</b> HSBC Rs. 1,000 Cr Combined Limit (uncommitted per SL) "
-        f"is haircut by 80% and Rs. 200 Cr is reclassified into Bucket 1 (Sanctioned / FB Mains) as the "
-        f"realistic effective committed amount (Market-Practice MP-13; Management Flag F-18). "
-        f"Bank retains right to withdraw — Flag F-07.",
-        f"<b>5. Validation status.</b> Model integrity verified — "
-        f"{vs.get('Pass_Count', 0)}/{vs.get('Total_Checks', 0)} checks pass.",
+        f"<b>3. Bridge facility.</b> RBL Rs. 200 Cr is a 12-month bullet maturing 13-Nov-2026. "
+        f"Refinance plan required.",
+        f"<b>4. HSBC reclassification.</b> HSBC Rs. 1,000 Cr Combined Limit (uncommitted per sanction letter) "
+        f"is haircut by 80% and Rs. 200 Cr is carried in Bucket 1 (Sanctioned / FB Mains) as the "
+        f"realistic effective committed amount. Bank retains right to withdraw.",
     ]
     for n in notes:
         story.append(Paragraph(n, ss["JFL_Body"]))
@@ -315,9 +249,8 @@ def generate_board_memo(data: Dict[str, Any], cov_df: pd.DataFrame,
     # ─── Footer ─────────────────────────────────────────────────────
     story.append(Spacer(1, 20))
     story.append(Paragraph(
-        "Source: JFL_Debt_Model_Final.xlsx (verified) — single source of truth | "
-        "Classification: Confidential — Treasury / Senior Management / Audit | "
-        "Generated by JFL Debt Monitor dashboard.",
+        "Source: JFL_Debt_Model_Final.xlsx | "
+        "Classification: Confidential - Treasury / Senior Management.",
         ss["JFL_Footer"]))
 
     doc.build(story)

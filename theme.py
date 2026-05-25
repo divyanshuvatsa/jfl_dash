@@ -1,4 +1,4 @@
-"""Theme — colors, fonts, CSS. Polished dark mode (mirrors JCL aesthetic, JFL palette).
+"""Theme, colors, fonts, CSS. Polished dark mode (mirrors JCL aesthetic, JFL palette).
 
 The JFL portfolio has 9 lenders (vs JCL's 3 active), so the lender palette is
 expanded. Bucket / status colors stay aligned with the JCL theme so anyone
@@ -27,7 +27,7 @@ COLORS = {
 }
 
 
-# All 9 JFL lenders — distinct, high-contrast on dark background.
+# All 9 JFL lenders, distinct, high-contrast on dark background.
 LENDER_COLORS = {
     "UBI":              "#3B82F6",   # Royal blue (lead bank)
     "Indian Bank":      "#06B6D4",   # Cyan

@@ -1,12 +1,4 @@
-"""Dashboard UI for JFL — sidebar + 5 tabs (Overview, Covenants, Schedule, AI, Tools).
-
-Mirrors the JCL reference architecture, adapted for:
-  - 9 lenders (vs JCL's 3 active)
-  - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
-  - 7 term loans (vs 3)
-  - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
-  - 18 Management Flags + 108-check Validation & Integrity
-"""
+"""Dashboard UI for JFL - sidebar + 5 tabs (Overview, Covenants, Schedule, AI, Tools)."""
 
 from __future__ import annotations
 from typing import Dict, Any
@@ -29,7 +21,7 @@ from visualizations import (
 
 # ─── HTML helper ───────────────────────────────────────────────────────
 def _html(s: str) -> str:
-    """Strip leading whitespace — prevents Streamlit's markdown parser from
+    """Strip leading whitespace, prevents Streamlit's markdown parser from
     treating 4-space-indented HTML as a code block."""
     return "\n".join(line.lstrip() for line in s.strip().splitlines())
 
@@ -40,12 +32,12 @@ def md(s: str):
 
 # ─── Formatters ────────────────────────────────────────────────────────
 def inr(v, d=1):
-    if v is None or pd.isna(v): return "—"
+    if v is None or pd.isna(v): return "-"
     return f"₹{v:,.{d}f} Cr"
 
 
 def pct(v, d=2):
-    if v is None or pd.isna(v): return "—"
+    if v is None or pd.isna(v): return "-"
     return f"{v*100:.{d}f}%" if abs(v) < 5 else f"{v:.{d}f}%"
 
 
@@ -80,19 +72,19 @@ def render_big_kpi(label, value, sub="", color="#F1F5F9"):
 def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
     with st.sidebar:
         st.markdown("""<div style='padding:16px 0;border-bottom:1px solid #334155;'>
-            <h1 style='font-size:1.4rem;margin:0;'>📊 JFL Debt Monitor</h1>
+            <h1 style='font-size:1.4rem;margin:0;'>JFL Debt Monitor</h1>
             <p style='color:#94A3B8;font-size:0.78rem;margin:4px 0 0 0;'>Jindal Ferrous Limited</p>
         </div>""", unsafe_allow_html=True)
 
-        st.markdown("### 🔴 Live Excel Sync")
+        st.markdown("### Live Excel Sync")
         if data.get("excel_exists"):
-            st.caption(f"✅ Source: {data['excel_path'].split('/')[-1]}")
-            st.caption(f"📅 Modified: {data['excel_mtime']}")
-            st.caption(f"🔑 Hash: `{data['excel_signature'][:8]}…`")
+            st.caption(f"Source: {data['excel_path'].split('/')[-1]}")
+            st.caption(f"Modified: {data['excel_mtime']}")
+            st.caption(f"Hash: `{data['excel_signature'][:8]}…`")
         else:
-            st.error("⚠️ Excel not found")
+            st.error("Excel not found")
 
-        uploaded = st.file_uploader("📤 Upload Updated Excel", type=["xlsx"],
+        uploaded = st.file_uploader("Upload Updated Excel", type=["xlsx"],
                                      help="Replaces the bundled Excel. Changes apply instantly.",
                                      key="excel_upload")
         if uploaded is not None:
@@ -103,7 +95,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
                     save_uploaded_excel(uploaded.getbuffer())
                 st.session_state["_last_processed_upload"] = file_id
                 force_reload()
-                st.success(f"✅ {uploaded.name} loaded. Refreshing…")
+                st.success(f"{uploaded.name} loaded. Refreshing…")
                 st.rerun()
             else:
                 st.caption(f"✓ Active: {uploaded.name}")
@@ -114,7 +106,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
             st.session_state.pop("_last_processed_upload", None)
             st.rerun()
 
-        with st.expander("📋 Data Provenance", expanded=False):
+        with st.expander("Data Provenance", expanded=False):
             st.markdown("""
 **Live (from Excel each reload):**
 - All 44 facility records
@@ -123,33 +115,31 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
 - 44 active covenants (FY29 TEV projected)
 - Repayment & Interest schedules (7 TLs)
 - 5-bucket totals (B1/B2/B3/B4/Hedge) + B0 sub-limits
-- 18 Management Flags
-- 108 Validation & Integrity checks (24 cross-source + 84 internal VJF)
 
-**Edit the Excel → Reload → everything updates.**
+**Edit the Excel, reload, everything updates.**
 """)
 
         st.markdown("---")
-        st.markdown("### ⚙️ View Controls")
+        st.markdown("### View Controls")
 
         basis = st.radio(
             "Financial Basis",
             options=["FY29E (TEV)", "FY25A"],
             index=0, horizontal=True, key="basis_input",
             help=("FY29E (TEV): post-COD TEV-projected financials (used for "
-                  "covenant testing — 43/44 Compliant). "
+                  "covenant testing, 43/44 Compliant). "
                   "FY25A: pre-COD audit baseline financials.")
         )
 
-        st.markdown("### 🔬 Scenario Stress")
+        st.markdown("### Scenario Stress")
         c1, c2 = st.columns(2)
         with c1:
-            if st.button("📈 Stress", use_container_width=True,
+            if st.button("Stress", use_container_width=True,
                           help="Excel preset: +100bps, +25bps spread, +10% util, -15% EBITDA, +10% debt"):
                 st.session_state.update(rate_shock=100, spread_shock=25,
                                           util_change=10,
                                           ebitda_change=-15, debt_change=10)
-            if st.button("⛈ Severe", use_container_width=True,
+            if st.button("Severe", use_container_width=True,
                           help="Excel preset: +200bps, +50bps spread, +20% util, -30% EBITDA, +25% debt"):
                 st.session_state.update(rate_shock=200, spread_shock=50,
                                           util_change=20,
@@ -180,7 +170,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
         is_stressed = any([rate_shock, spread_shock, util_change, ebitda_change, debt_change])
         if is_stressed:
             st.markdown(_html(f"""<div class='callout-warn'>
-                ⚠️ <b>Stress Active</b><br>
+                <b>Stress Active</b><br>
                 Rate {rate_shock:+d}bps · Spread {spread_shock:+d}bps · Util {util_change:+d}% ·
                 EBITDA {ebitda_change:+d}% · Debt {debt_change:+d}%
             </div>"""), unsafe_allow_html=True)
@@ -207,7 +197,7 @@ def render_sidebar(data: Dict[str, Any]) -> Dict[str, Any]:
 def render_header(data: Dict[str, Any]):
     c1, c2, c3 = st.columns([5, 2, 2])
     with c1:
-        dcco_str = pd.Timestamp(data['dcco']).strftime('%d-%b-%Y') if data.get('dcco') else '—'
+        dcco_str = pd.Timestamp(data['dcco']).strftime('%d-%b-%Y') if data.get('dcco') else '-'
         st.markdown(_html(f"""<div style='background:linear-gradient(90deg, rgba(37,99,235,0.1) 0%, transparent 100%);
                                 padding:16px 20px;border-radius:12px;border:1px solid #1E293B;'>
             <div style='font-size:1.7rem;font-weight:800;
@@ -223,20 +213,15 @@ def render_header(data: Dict[str, Any]):
     with c2:
         st.markdown(_html(f"""<div style='background:#1E293B;border-radius:12px;padding:14px 18px;text-align:right;'>
             <div style='color:#94A3B8;font-size:0.7rem;text-transform:uppercase;'>FX Rate</div>
-            <div style='color:#F1F5F9;font-size:1.3rem;font-weight:700;'>₹{data['fx_rate']:.2f}/USD</div>
+            <div style='color:#F1F5F9;font-size:1.3rem;font-weight:700;'>INR {data['fx_rate']:.2f}/USD</div>
         </div>"""), unsafe_allow_html=True)
     with c3:
-        vs = data.get("validation_summary", {})
-        ok = vs.get("Overall_Status", "—")
-        ok_color = "#10B981" if "PASS" in str(ok) else "#EF4444"
-        st.markdown(_html(f"""<div style='background:#1E293B;border-radius:12px;padding:14px 18px;text-align:right;'>
-            <div style='color:#94A3B8;font-size:0.7rem;text-transform:uppercase;'>Validation</div>
-            <div style='color:{ok_color};font-size:1.3rem;font-weight:700;'>{vs.get('Pass_Count','—')}/{vs.get('Total_Checks','—')} {ok}</div>
-        </div>"""), unsafe_allow_html=True)
+        # Reserved
+        pass
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 1 — OVERVIEW
+# TAB 1, OVERVIEW
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
     cov_df = resolve_covenants(data, controls["basis"],
@@ -258,25 +243,21 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
     pending   = (cov_df["Status"] == "Pending Input").sum()
 
     # ─── Hero verdict ──────────────────────────────────────────
-    flags = data.get("management_flags", pd.DataFrame())
-    open_high = len(flags[(flags["Severity"].isin(["High", "Critical"])) &
-                            (flags["Status"].isin(["Open", "Open (linked F-01)"]))]) if len(flags) else 0
     if breach > 3:
         verdict, color = "PRE-COD WATCH", "#F59E0B"
-        narrative = (f"On <b>{controls['basis']}</b> basis, <b>{breach} covenants</b> show as breached — "
+        narrative = (f"On <b>{controls['basis']}</b> basis, <b>{breach} covenants</b> show as breached, "
                      f"reflecting pre-operational reality (EBITDA still negative at FY25). "
-                     f"<b>{open_high}</b> high-severity Management Flags open. "
                      f"FY29 TEV projection reaches 43/44 compliant post-COD.")
     elif breach > 0 or near > 0:
         verdict, color = "MONITOR CLOSELY", "#F59E0B"
-        narrative = (f"Sanctioned debt <b>{inr(t['Bucket1_Sanctioned_Debt'])}</b> · "
+        narrative = (f"Sanctioned debt <b>{inr(t['Bucket1_Sanctioned_Debt'])}</b>. "
                      f"<b>{breach} breached</b>, <b>{near} near-breach</b>. "
                      f"Annual run-rate {inr(int_calc['Total'])}.")
     else:
         verdict, color = "HEALTHY", "#10B981"
         narrative = (f"Sanctioned debt <b>{inr(t['Bucket1_Sanctioned_Debt'])}</b> across 9 lenders "
-                     f"(8 funded + HSBC uncommitted memo). "
-                     f"Adjusted Consortium <b>{inr(t['Adjusted_Consortium'])}</b> (after ICICI ₹840 Cr takeover). "
+                     f"(8 funded plus HSBC uncommitted memo). "
+                     f"Adjusted Consortium <b>{inr(t['Adjusted_Consortium'])}</b> (after ICICI 840 Cr takeover). "
                      f"Annual run-rate <b>{inr(int_calc['Total'])}</b> at WAC <b>{int_calc['Weighted_Avg_Cost']*100:.2f}%</b>. "
                      f"<b>{compliant}/{len(cov_df)} covenants compliant</b>.")
     render_hero(verdict, color, narrative)
@@ -284,8 +265,8 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
     # ─── Five-bucket KPIs (row 1) ──────────────────────────────
     render_tab_header("AT A GLANCE", "Five-Bucket View",
                        "B1+B2 = Sanctioned Debt. B3 FD-backed tracked separately; B4 emptied after HSBC "
-                       "reclassification to B1 per MP-13/F-18. "
-                       "ICICI TL takeover ₹840 Cr reduces gross Sanctioned to Adjusted Consortium ₹3,826 Cr.")
+                       "reclassification to B1. "
+                       "ICICI TL takeover 840 Cr reduces gross Sanctioned to Adjusted Consortium 3,826 Cr.")
     fm_count = len(data["facility_master"])
     c1, c2, c3, c4 = st.columns(4)
     with c1:
@@ -347,10 +328,10 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
                    if (breach + near + watch + pending) > 0 else "All clear")
         render_big_kpi("Covenants", f"{compliant}/{len(cov_df)}", cov_sub, color=status_color)
     with c4:
-        flags_open = len(flags[flags["Status"].isin(["Open", "Open (linked F-01)"])]) if len(flags) else 0
-        render_big_kpi("Mgmt Flags Open", str(flags_open),
-                        f"{open_high} high-severity",
-                        color="#F59E0B" if open_high > 0 else "#10B981")
+        n_facilities = len(data["facility_master"])
+        render_big_kpi("Facilities", str(n_facilities),
+                        "across 9 lenders",
+                        color="#F1F5F9")
 
     # ─── Concentration & bucket donuts ────────────────────────
     render_tab_header("STRUCTURE", "Lender Concentration & Bucket Mix",
@@ -409,7 +390,7 @@ def render_tab_overview(data: Dict[str, Any], controls: Dict[str, Any]):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 2 — COVENANTS
+# TAB 2, COVENANTS
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
     cov_df = resolve_covenants(data, controls["basis"],
@@ -427,7 +408,7 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
     # ─── Hero ─────────────────────────────────────────────
     if breach > 5:
         verdict, color = "PRE-COD STRUCTURAL BREACHES", "#F59E0B"
-        narrative = (f"<b>{breach} covenants breached</b> on {controls['basis']} basis — "
+        narrative = (f"<b>{breach} covenants breached</b> on {controls['basis']} basis, "
                      f"reflects pre-operational reality (EBITDA still negative at FY25). "
                      f"Toggle basis to <b>FY29E (TEV)</b> in sidebar to see post-COD projection.")
     elif breach > 0:
@@ -474,7 +455,7 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
         <div style='padding:14px 0;border-top:1px solid #334155;'>
             <div style='font-size:0.78rem;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;'>First-Test Window</div>
             <div style='font-size:1.4rem;font-weight:700;color:#F1F5F9;'>FY29 (post-COD)</div>
-            <div style='color:#CBD5E1;font-size:0.82rem;'>Consortium first formal test once plant is operational. IDFC tests from FY27 (2-yr earlier — flag F-04).</div>
+            <div style='color:#CBD5E1;font-size:0.82rem;'>Consortium first formal test once plant is operational. IDFC tests from FY27 (two years earlier than peers).</div>
         </div>
         <div style='padding:14px 0;border-top:1px solid #334155;'>
             <div style='font-size:0.78rem;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;font-weight:600;'>Basis Note</div>
@@ -493,11 +474,11 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
     else:
         _binding = "No numeric headroom data available."
 
-    render_tab_header("HEADROOM", "Binding Covenants — Tightest Instance per Ratio",
+    render_tab_header("HEADROOM", "Binding Covenants, Tightest Instance per Ratio",
                        f"{_binding} Expand the audit view below for every instance.")
     render_covenant_headroom_chart(cov_df, mode="tightest")
 
-    with st.expander("📋 Full audit view — all instances by lender", expanded=False):
+    with st.expander("Full audit view, all instances by lender", expanded=False):
         st.caption("Same data, broken out per lender. Useful for verifying no single lender's "
                     "threshold is being inadvertently relaxed.")
         render_covenant_headroom_chart(cov_df, mode="all")
@@ -525,7 +506,7 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
                        else f"{r['Operator']}{r['Threshold']}")
             hr_str = (f"{r['Headroom_Pct']:+.1f}%"
                       if isinstance(r["Headroom_Pct"], (int, float)) and pd.notna(r["Headroom_Pct"])
-                      else "—")
+                      else "-")
             st.markdown(_html(f"""<div style='background:{bg};border-left:4px solid {color};
                                   border-radius:12px;padding:14px 18px;margin-bottom:8px;'>
                 <div style='display:flex;justify-content:space-between;'>
@@ -545,26 +526,26 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
                 </div>
             </div>"""), unsafe_allow_html=True)
         if len(attention) > 20:
-            st.caption(f"… and {len(attention)-20} more — see full table below.")
+            st.caption(f"… and {len(attention)-20} more, see full table below.")
     else:
-        st.markdown("<div class='callout-good'><b>✅ All covenants well within thresholds.</b></div>",
+        st.markdown("<div class='callout-good'><b>All covenants well within thresholds.</b></div>",
                      unsafe_allow_html=True)
 
     # ─── Full per-lender table ────────────────────────────
-    with st.expander("📋 All covenants by lender", expanded=False):
+    with st.expander("All covenants by lender", expanded=False):
         for lender in sorted(cov_df["Lender"].unique()):
             sub = cov_df[cov_df["Lender"] == lender]
             st.markdown(f"#### {lender} ({len(sub)} covenants)")
             d = sub.copy()
             d["Actual_S"] = d["Actual"].apply(
                 lambda x: f"{x:.4f}x" if isinstance(x, (int, float)) and pd.notna(x)
-                else (str(x)[:25] if x is not None else "—"))
+                else (str(x)[:25] if x is not None else "-"))
             d["Headroom_S"] = d["Headroom_Pct"].apply(
-                lambda x: f"{x:+.1f}%" if isinstance(x, (int, float)) and pd.notna(x) else "—")
+                lambda x: f"{x:+.1f}%" if isinstance(x, (int, float)) and pd.notna(x) else "-")
             d["Threshold_S"] = d.apply(
                 lambda r: (f"{r['Operator']}{r['Threshold']:.2f}x"
                            if isinstance(r['Threshold'], (int, float))
-                           else f"{r['Operator']}{r['Threshold']}" if pd.notna(r['Threshold']) else "—"),
+                           else f"{r['Operator']}{r['Threshold']}" if pd.notna(r['Threshold']) else "-"),
                 axis=1)
             d_show = d[["Covenant", "Threshold_S", "Actual_S", "Headroom_S", "Status"]].copy()
             d_show.columns = ["Covenant", "Threshold", "Actual", "Headroom", "Status"]
@@ -572,7 +553,7 @@ def render_tab_covenants(data: Dict[str, Any], controls: Dict[str, Any]):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 3 — SCHEDULE (Repayment + Renewals + Mgmt Flags + Validation)
+# TAB 3 - SCHEDULE (Repayment + Renewals)
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
     rep = data["repayment_schedule"].copy()
@@ -634,7 +615,7 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
             render_big_kpi("Peak DS Year", peak["FY_Label"],
                             f"{inr(peak['Total_DS'])} (P+I)")
         else:
-            render_big_kpi("Peak DS Year", "—", "")
+            render_big_kpi("Peak DS Year", "-", "")
     with c4:
         cov_df = resolve_covenants(data, controls["basis"],
                                      stress_active=controls["is_stressed"],
@@ -644,10 +625,10 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
                              ~cov_df["Covenant"].str.contains("Cash Sweep", case=False, na=False)]
         if len(dscr_rows):
             dscr = dscr_rows.iloc[0]["Actual"]
-            dscr_val = f"{dscr:.2f}x" if isinstance(dscr, (int, float)) and pd.notna(dscr) else "—"
+            dscr_val = f"{dscr:.2f}x" if isinstance(dscr, (int, float)) and pd.notna(dscr) else "-"
             dscr_color = "#10B981" if isinstance(dscr, (int, float)) and dscr >= 1.5 else "#F59E0B"
         else:
-            dscr_val, dscr_color = "—", "#94A3B8"
+            dscr_val, dscr_color = "-", "#94A3B8"
         render_big_kpi("DSCR", dscr_val, f"vs ≥1.25x · {controls['basis']}", color=dscr_color)
 
     # ─── TL maturity panel ─────────────────────────────────────
@@ -689,7 +670,7 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
                        (fy_agg["RBL"] > 0)].copy()
     if len(fy_chart):
         fig = go.Figure()
-        # Stacked consortium TLs (these sum to Total_Principal — Excel's intent)
+        # Stacked consortium TLs (these sum to Total_Principal, Excel's intent)
         bar_specs = [
             ("UBI_I",      "UBI RTL-I",   "#3B82F6"),
             ("UBI_II",     "UBI RTL-II",  "#60A5FA"),
@@ -708,14 +689,14 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
                 marker_color=color, opacity=0.95,
                 hovertemplate=f"<b>{name} Principal</b><br>%{{x}}: ₹%{{y:.2f}} Cr<extra></extra>",
             ))
-        # RBL bullet — separate bar group to mark the one-off refinance
+        # RBL bullet, separate bar group to mark the one-off refinance
         if fy_chart["RBL"].sum() > 0:
             fig.add_trace(go.Bar(
                 name="RBL Bridge bullet (refinance)",
                 x=fy_chart["FY_Label"], y=fy_chart["RBL"],
                 marker_color="#EF4444", opacity=0.85,
                 hovertemplate="<b>RBL Bridge</b><br>%{x}: ₹%{y:.2f} Cr "
-                              "(12-month bullet — assumed refinanced)<extra></extra>",
+                              "(12-month bullet, assumed refinanced)<extra></extra>",
             ))
         # Interest overlay
         fig.add_trace(go.Scatter(
@@ -725,7 +706,7 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
             marker=dict(size=7, color="#F59E0B"),
             hovertemplate="<b>Interest</b><br>%{x}: ₹%{y:.2f} Cr<extra></extra>",
         ))
-        # Total DS annotation — only on the consortium stack (matches Excel intent)
+        # Total DS annotation, only on the consortium stack (matches Excel intent)
         for _, r in fy_chart.iterrows():
             if r["Total_DS"] > 0:
                 fig.add_annotation(
@@ -739,7 +720,7 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
                            legend=dict(orientation="h", x=0.5, xanchor="center", y=-0.22,
                                         font=dict(color="#94A3B8")))
         st.plotly_chart(fig, use_container_width=True)
-        st.caption("Numbers above bars = consortium total DS (P+I, excl. RBL bullet — per Excel methodology).")
+        st.caption("Numbers above bars = consortium total DS (P+I, excl. RBL bullet, per Excel methodology).")
 
     # ─── Cumulative run-down ───────────────────────────────────
     render_tab_header("RUNDOWN", "Term-Loan Outstanding Over Time",
@@ -747,14 +728,14 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
     render_repayment_timeline(data)
 
     # ─── Quarterly schedule table ──────────────────────────────
-    with st.expander("📅 Full quarterly repayment schedule", expanded=False):
+    with st.expander("Full quarterly repayment schedule", expanded=False):
         rep_show = rep.copy()
         rep_show["Period"] = (rep_show["Period_End"].dt.strftime("%d-%b-%Y")
                                 + " (" + rep_show["Period_Label"] + ")")
         rep_show = rep_show[(rep_show["Period_End"] >= as_of - pd.Timedelta(days=90))].head(40)
         cols = ["Period", "Total_Principal", "Total_Interest", "Total_DS", "Combined_OS"]
         for c in ["Total_Principal", "Total_Interest", "Total_DS", "Combined_OS"]:
-            rep_show[c] = rep_show[c].apply(lambda x: f"{x:.2f}" if x > 0 else "—")
+            rep_show[c] = rep_show[c].apply(lambda x: f"{x:.2f}" if x > 0 else "-")
         rep_show.columns = [c.replace("_", " ") for c in rep_show.columns]
         cols_show = [c.replace("_", " ") for c in cols]
         st.dataframe(rep_show[cols_show], use_container_width=True, hide_index=True)
@@ -771,7 +752,7 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
         disp = df[["S_No", "Lender", "Facility", "Category", "Bucket",
                     "Sanction_INR", "Effective_OS", "Effective_Rate",
                     "Validity_Date", "Maturity_Date"]].copy()
-        # Normalize Bucket to string — JFL mixes int (1-4) with "H" (hedge) and 0 (sub-limit).
+        # Normalize Bucket to string, JFL mixes int (1-4) with "H" (hedge) and 0 (sub-limit).
         # pyarrow can't convert mixed-type object columns, so coerce to string for display.
         disp["Bucket"] = disp["Bucket"].astype(str)
         disp["Sanction_INR"]  = disp["Sanction_INR"].apply(lambda x: f"₹{x:,.1f}")
@@ -785,7 +766,7 @@ def render_tab_repayment(data: Dict[str, Any], controls: Dict[str, Any]):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 3b — RENEWALS (called from same Schedule tab below repayment)
+# TAB 3b, RENEWALS (called from same Schedule tab below repayment)
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
     fm = data["facility_master"].copy()
@@ -829,7 +810,7 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
         selected_lenders = st.multiselect("Lenders", options=all_lenders, default=all_lenders,
                                             key="renewal_lender_filter")
         if not selected_lenders:
-            st.caption("⚠ No lenders selected — defaulting to all.")
+            st.caption("No lenders selected, defaulting to all.")
         st.markdown("##### KPIs (within filter)")
 
     filtered = fm.copy()
@@ -861,7 +842,7 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
                 border-left:4px solid {color};border-radius:8px;padding:12px;'>
                 <div style='color:#94A3B8;font-size:0.7rem;letter-spacing:0.08em;'>{label}</div>
                 <div style='color:#F1F5F9;font-size:1.5rem;font-weight:700;'>{count}</div>
-                <div style='color:{color};font-size:0.78rem;'>{f"₹{value:,.1f} Cr" if count else "—"}</div></div>"""), unsafe_allow_html=True)
+                <div style='color:{color};font-size:0.78rem;'>{f"₹{value:,.1f} Cr" if count else "-"}</div></div>"""), unsafe_allow_html=True)
 
     _kpi_with_filter(c0, "Overdue", expired, "#7F1D1D", "Overdue")
     _kpi_with_filter(c1, "≤30 days", next_30, "#EF4444", "≤30 days")
@@ -876,7 +857,7 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
     ].copy()
 
     render_tab_header("INTEGRATED VIEW",
-                       f"Renewal Timeline — {len(renewal_view)} Parent Facilities",
+                       f"Renewal Timeline, {len(renewal_view)} Parent Facilities",
                        "Sub-limits ride their parent's renewal cycle (excluded). Term Loans amortise "
                        "rather than renew (shown separately below). Hover any bar for full detail.")
 
@@ -885,7 +866,7 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
     else:
         renewal_view = renewal_view.sort_values("days_to_expiry")
         fdf = renewal_view.copy()
-        fdf["label"] = fdf["Lender"] + " — " + fdf["Facility"].str[:35]
+        fdf["label"] = fdf["Lender"] + ", " + fdf["Facility"].str[:35]
         fdf["expiry_str"] = fdf["Validity_Date"].dt.strftime("%d-%b-%Y")
 
         def _color(d):
@@ -897,8 +878,8 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
             return "#64748B"
 
         def _action(d):
-            if d < 0: return "🚨 OVERDUE — contact lender now"
-            if d <= 30: return "🔴 Submit renewal request"
+            if d < 0: return "🚨 OVERDUE, contact lender now"
+            if d <= 30: return "Submit renewal request"
             if d <= 60: return "🟠 Begin renewal preparation"
             if d <= 90: return "🔵 Schedule discussions"
             if d <= 180: return "🟣 Monitor & plan"
@@ -927,11 +908,11 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
             customdata=list(zip(fdf["expiry_str"], fdf["Sanction_INR"], fdf["Category"], fdf["action"])),
             hovertemplate=(
                 "<b>%{y}</b><br>"
-                "📅 Expires: %{customdata[0]}<br>"
+                "Expires: %{customdata[0]}<br>"
                 "⏱ Days to expiry: %{x:+d}<br>"
-                "💰 Sanction: ₹%{customdata[1]:.1f} Cr<br>"
-                "📋 Category: %{customdata[2]}<br>"
-                "🎯 %{customdata[3]}<extra></extra>"
+                "Sanction: ₹%{customdata[1]:.1f} Cr<br>"
+                "Category: %{customdata[2]}<br>"
+                "%{customdata[3]}<extra></extra>"
             ),
             showlegend=False,
         ))
@@ -1021,106 +1002,7 @@ def render_tab_renewals(data: Dict[str, Any], controls: Dict[str, Any]):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 3c — MANAGEMENT FLAGS + VALIDATION ENGINE
-# ═══════════════════════════════════════════════════════════════════════
-def render_tab_flags_and_validation(data: Dict[str, Any]):
-    flags = data.get("management_flags", pd.DataFrame())
-    val   = data.get("validation_engine", pd.DataFrame())
-    vs    = data.get("validation_summary", {})
-
-    # ─── Flag KPIs ─────────────────────────────────────────────
-    if len(flags) > 0:
-        open_flags = flags[flags["Status"].isin(["Open", "Open (linked F-01)"])]
-        closed     = flags[flags["Status"] == "Closed"]
-        acceptable = flags[flags["Status"] == "Acceptable"]
-        crit_high  = open_flags[open_flags["Severity"].isin(["Critical", "High"])]
-
-        render_tab_header("FLAGS", "Management Watch Items (F-01 → F-15)",
-                           "Treasury / credit-committee items requiring decision, action, or "
-                           "external verification.")
-        c1, c2, c3, c4 = st.columns(4)
-        with c1: render_big_kpi("Total Flags", str(len(flags)), "F-01..F-15 (F-11 retired as duplicate)", color="#3B82F6")
-        with c2: render_big_kpi("Open", str(len(open_flags)),
-                                  f"{len(crit_high)} High/Critical",
-                                  color="#F59E0B" if len(crit_high) > 0 else "#10B981")
-        with c3: render_big_kpi("Closed / Verified", str(len(closed)), "Resolved", color="#10B981")
-        with c4: render_big_kpi("Acceptable", str(len(acceptable)),
-                                  "Documented exception", color="#06B6D4")
-
-        # Flag list
-        sev_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
-        flag_sorted = flags.copy()
-        flag_sorted["_sev"] = flag_sorted["Severity"].map(sev_order).fillna(99)
-        flag_sorted["_st"] = flag_sorted["Status"].map(
-            {"Open": 0, "Open (linked F-01)": 1, "Acceptable": 2, "Closed": 3}).fillna(99)
-        flag_sorted = flag_sorted.sort_values(["_st", "_sev"])
-
-        for _, f in flag_sorted.iterrows():
-            sev = f["Severity"]
-            color = SEVERITY_COLORS.get(sev, "#64748B")
-            status = f["Status"]
-            status_color = ("#10B981" if status == "Closed"
-                            else "#06B6D4" if status == "Acceptable"
-                            else "#F59E0B" if "Open" in status
-                            else "#94A3B8")
-            severity_class = sev.lower() if sev in SEVERITY_COLORS else "low"
-            st.markdown(_html(f"""<div class='insight-card' style='border-left-color:{color};
-                                  background:rgba({int(color[1:3], 16)},{int(color[3:5], 16)},{int(color[5:7], 16)},0.06);'>
-                <div style='display:flex;justify-content:space-between;align-items:flex-start;gap:14px;'>
-                    <div style='flex:3;'>
-                        <div style='display:flex;gap:10px;align-items:center;'>
-                            <span style='font-size:0.85rem;font-weight:700;color:#F1F5F9;'>{f['Flag']}</span>
-                            <span class='severity-badge severity-{severity_class}'>{sev}</span>
-                            <span style='color:#94A3B8;font-size:0.72rem;'>{f['Category']}</span>
-                        </div>
-                        <div style='color:#CBD5E1;font-size:0.86rem;margin-top:4px;line-height:1.4;'>
-                            {f['Description']}
-                        </div>
-                        <div style='color:#94A3B8;font-size:0.75rem;margin-top:6px;'>
-                            <b>Action:</b> {f['Action']}
-                        </div>
-                    </div>
-                    <div style='flex:1;text-align:right;min-width:120px;'>
-                        <div style='color:{status_color};font-size:0.78rem;font-weight:700;letter-spacing:0.06em;'>
-                            {status.upper()}
-                        </div>
-                        <div style='color:#94A3B8;font-size:0.72rem;margin-top:4px;'>
-                            Owner: {f['Owner']}
-                        </div>
-                    </div>
-                </div>
-            </div>"""), unsafe_allow_html=True)
-
-    # ─── Validation & Integrity ───────────────────────────────
-    render_tab_header("VALIDATION", "Model Integrity — Validation & Integrity",
-                       f"{vs.get('Pass_Count', 0)}/{vs.get('Total_Checks', 0)} checks passed · "
-                       f"Overall {vs.get('Overall_Status', 'PASS')}.")
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: render_big_kpi("Total Checks",  str(vs.get("Total_Checks", "—")),
-                              "Excel V&V suite", color="#3B82F6")
-    with c2: render_big_kpi("PASS",           str(vs.get("Pass_Count", "—")),
-                              "Verified", color="#10B981")
-    with c3: render_big_kpi("FAIL",           str(vs.get("Fail_Count", "—")),
-                              "Non-critical", color="#10B981" if vs.get("Fail_Count", 0) == 0 else "#F59E0B")
-    with c4: render_big_kpi("Critical FAIL",  str(vs.get("Critical_Fail", "—")),
-                              "Must be zero",
-                              color="#10B981" if vs.get("Critical_Fail", 0) == 0 else "#EF4444")
-
-    if len(val) > 0:
-        with st.expander(f"📋 Full integrity-check register ({len(val)} checks)", expanded=False):
-            # Filter / search
-            grp = st.selectbox("Filter group", options=["All"] + sorted(val["Group"].unique().tolist()),
-                                key="ve_group_filter")
-            disp = val.copy()
-            if grp != "All":
-                disp = disp[disp["Group"] == grp]
-            st.dataframe(disp[["Check_ID", "Description", "Expected", "Actual",
-                                "Status", "Severity", "Group"]],
-                          use_container_width=True, hide_index=True, height=400)
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# TAB 4 — AI ANALYST  (Rule-Based + optional Gemini API)
+# TAB 4 - AI ANALYST
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
     cov_df = resolve_covenants(data, controls["basis"],
@@ -1130,24 +1012,23 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
                                 debt_change_pct=controls["debt_change"])
 
     render_tab_header("AI ANALYST", "Ask Anything",
-                       "Two analyst modes available: a Rule-Based engine (free, instant, "
-                       "deterministic) and a Gemini-powered conversational analyst "
-                       "(bring your own API key).")
+                       "Quick answers from pre-built portfolio queries, or chat with Gemini "
+                       "for free-form analysis.")
 
     # ─── Mode toggle ─────────────────────────────────────────
     mode = st.radio(
         "Analyst mode",
-        ["🤖 Rule-Based (free, instant)", "✨ Gemini AI (bring your API key)"],
+        ["Quick Answers", "Gemini AI (bring your API key)"],
         horizontal=True,
         key="ai_mode",
-        help=("Rule-Based gives deterministic answers from 15 pre-built JFL templates. "
-              "Gemini AI sends your question + portfolio snapshot to Google's Gemini "
+        help=("Quick Answers pulls from a set of pre-built JFL queries. "
+              "Gemini AI sends your question plus portfolio snapshot to Google's Gemini "
               "API for free-form conversational analysis.")
     )
     st.markdown("---")
 
-    # ─── Proactive insight cards (shown in both modes) ────────
-    st.markdown("#### 💡 Proactive Insights")
+    # ─── Insight cards (shown in both modes) ────────
+    st.markdown("#### Observations")
     insights = rba.get_proactive_insights(data, cov_df)
     cols = st.columns(2)
     for i, ins in enumerate(insights):
@@ -1160,11 +1041,11 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
     st.markdown("---")
 
     # ════════════════════════════════════════════════════════════
-    # MODE A — RULE-BASED ANALYST
+    # MODE A - QUICK ANSWERS
     # ════════════════════════════════════════════════════════════
-    if mode.startswith("🤖"):
-        st.markdown("#### 💬 Suggested Questions")
-        st.caption("Click any question for an instant answer drawn directly from the verified Excel.")
+    if mode.startswith("Quick"):
+        st.markdown("#### Suggested Questions")
+        st.caption("Click any question for an answer pulled directly from the Excel.")
         cols = st.columns(2)
         for i, q in enumerate(rba.SUGGESTED_QUESTIONS):
             with cols[i % 2]:
@@ -1187,15 +1068,15 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
             st.rerun()
 
     # ════════════════════════════════════════════════════════════
-    # MODE B — GEMINI AI ANALYST
+    # MODE B - GEMINI AI
     # ════════════════════════════════════════════════════════════
     else:
-        st.markdown("#### ✨ Gemini AI Conversational Analyst")
+        st.markdown("#### Gemini AI")
 
         # ─── API key + model selector (collapsed by default once configured)
         key_configured = bool(st.session_state.get("gemini_api_key", "").strip())
         with st.expander(
-            "🔑 API Configuration" + (" — ✅ configured" if key_configured else " — ⚠ not configured"),
+            "API Configuration" + (", configured" if key_configured else ", not configured"),
             expanded=not key_configured
         ):
             st.markdown(
@@ -1230,14 +1111,14 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
             # Validate key format
             if api_key:
                 if gem.is_valid_key_format(api_key):
-                    st.success("✅ Key format looks valid. Ready to chat.")
+                    st.success("Key format looks valid. Ready to chat.")
                 else:
-                    st.warning("⚠ Key doesn't look like a Gemini API key (should start with 'AIza').")
+                    st.warning("Key doesn't look like a Gemini API key (should start with 'AIza').")
 
         if not st.session_state.get("gemini_api_key", "").strip():
             st.info(
-                "👆 **Enter your Gemini API key above** to start chatting. "
-                "Don't have one? It's free for casual use — sign up at "
+                "**Enter your Gemini API key above** to start chatting. "
+                "Don't have one? It's free for casual use, sign up at "
                 "[aistudio.google.com](https://aistudio.google.com/apikey)."
             )
         else:
@@ -1255,7 +1136,7 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
             for i, p in enumerate(gemini_prompts):
                 with gpcols[i % 2]:
                     if st.button(p, key=f"gp_{i}", use_container_width=True):
-                        with st.spinner("✨ Gemini is thinking…"):
+                        with st.spinner("Gemini is thinking…"):
                             ok, resp = gem.ask_gemini(
                                 st.session_state.gemini_api_key,
                                 st.session_state.get("gemini_model", gem.DEFAULT_MODEL),
@@ -1267,14 +1148,14 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
                         st.session_state.ai_history.append({"role": "user", "content": p})
                         st.session_state.ai_history.append({
                             "role": "assistant",
-                            "content": ("**✨ Gemini:**\n\n" + resp) if ok else resp
+                            "content": ("**Gemini:**\n\n" + resp) if ok else resp
                         })
                         st.rerun()
 
             # ─── Free-form Gemini chat
             user_input = st.chat_input("Ask Gemini anything about the JFL portfolio…")
             if user_input:
-                with st.spinner("✨ Gemini is thinking…"):
+                with st.spinner("Gemini is thinking…"):
                     ok, resp = gem.ask_gemini(
                         st.session_state.gemini_api_key,
                         st.session_state.get("gemini_model", gem.DEFAULT_MODEL),
@@ -1286,29 +1167,29 @@ def render_tab_ai(data: Dict[str, Any], controls: Dict[str, Any]):
                 st.session_state.ai_history.append({"role": "user", "content": user_input})
                 st.session_state.ai_history.append({
                     "role": "assistant",
-                    "content": ("**✨ Gemini:**\n\n" + resp) if ok else resp
+                    "content": ("**Gemini:**\n\n" + resp) if ok else resp
                 })
                 st.rerun()
 
     # ─── Conversation history (shared across modes) ─────────────
     if st.session_state.get("ai_history"):
         st.markdown("---")
-        st.markdown("#### 📝 Conversation")
+        st.markdown("#### Conversation")
         for m in st.session_state.ai_history:
             if m["role"] == "user":
-                st.markdown(f"**🧑 You:** {m['content']}")
+                st.markdown(f"**You:** {m['content']}")
             else:
                 st.markdown(m["content"], unsafe_allow_html=True)
             st.markdown("")
         col_clear, col_export = st.columns([1, 5])
         with col_clear:
-            if st.button("🗑️ Clear", key="clear_ai_hist"):
+            if st.button("Clear", key="clear_ai_hist"):
                 st.session_state.ai_history = []
                 st.rerun()
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 5 — TOOLS (Export + Snapshots)
+# TAB 5, TOOLS (Export + Snapshots)
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_export(data: Dict[str, Any], controls: Dict[str, Any]):
     cov_df = resolve_covenants(data, controls["basis"],
@@ -1320,15 +1201,15 @@ def render_tab_export(data: Dict[str, Any], controls: Dict[str, Any]):
                        "Download CSVs, PDF board memo, or snapshot the current state.")
 
     # ─── PDF Board Memo ──────────────────────────────────────
-    st.markdown("#### 📄 Board Memo (PDF)")
-    st.caption("A polished multi-page PDF with verdict, KPIs, five-bucket table, "
-                "lender concentration, top tightest covenants, open Management Flags, "
-                "and Validation & Integrity status. Suitable for senior-management distribution.")
+    st.markdown("#### Board Memo (PDF)")
+    st.caption("Multi-page PDF with verdict, KPIs, five-bucket table, "
+                "lender concentration, and top tightest covenants. "
+                "Suitable for senior-management distribution.")
     try:
         from pdf_export import generate_board_memo
         pdf_bytes = generate_board_memo(data, cov_df, controls)
         st.download_button(
-            "📄 Download Board Memo PDF",
+            "Download Board Memo PDF",
             data=pdf_bytes,
             file_name=f"JFL_Board_Memo_{data['as_of_date']}.pdf",
             mime="application/pdf",
@@ -1340,43 +1221,38 @@ def render_tab_export(data: Dict[str, Any], controls: Dict[str, Any]):
         st.code(traceback.format_exc())
 
     st.markdown("---")
-    st.markdown("#### 📊 Data Files (CSV)")
+    st.markdown("#### Data Files (CSV)")
     c1, c2, c3 = st.columns(3)
     with c1:
         csv = cov_df.to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Covenants CSV", csv,
+        st.download_button("Covenants CSV", csv,
                             file_name=f"jfl_covenants_{data['as_of_date']}.csv",
                             mime="text/csv", use_container_width=True)
     with c2:
         csv = data["facility_master"].to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Facility Master CSV", csv,
+        st.download_button("Facility Master CSV", csv,
                             file_name=f"jfl_facilities_{data['as_of_date']}.csv",
                             mime="text/csv", use_container_width=True)
     with c3:
         csv = data["interest_schedule"].to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Interest Schedule CSV", csv,
+        st.download_button("Interest Schedule CSV", csv,
                             file_name=f"jfl_interest_{data['as_of_date']}.csv",
                             mime="text/csv", use_container_width=True)
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
         csv = data["repayment_schedule"].to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Repayment Schedule CSV", csv,
+        st.download_button("Repayment Schedule CSV", csv,
                             file_name=f"jfl_repayment_{data['as_of_date']}.csv",
                             mime="text/csv", use_container_width=True)
     with c2:
-        csv = data["management_flags"].to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Management Flags CSV", csv,
-                            file_name=f"jfl_mgmt_flags_{data['as_of_date']}.csv",
-                            mime="text/csv", use_container_width=True)
-    with c3:
-        csv = data["validation_engine"].to_csv(index=False).encode("utf-8")
-        st.download_button("📥 Validation & Integrity CSV", csv,
-                            file_name=f"jfl_validation_{data['as_of_date']}.csv",
+        csv = data["renewal_calendar"].to_csv(index=False).encode("utf-8")
+        st.download_button("Renewal Calendar CSV", csv,
+                            file_name=f"jfl_renewals_{data['as_of_date']}.csv",
                             mime="text/csv", use_container_width=True)
 
     st.markdown("---")
-    st.markdown("#### 📌 Quick reconciliation summary")
+    st.markdown("#### Reconciliation Summary")
     t = data["totals"]; isum = data["interest_summary"]
     st.markdown(f"""
 | KPI | Value |
@@ -1400,7 +1276,7 @@ def render_tab_export(data: Dict[str, Any], controls: Dict[str, Any]):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# TAB 5b — HISTORICAL SNAPSHOTS
+# TAB 5b, HISTORICAL SNAPSHOTS
 # ═══════════════════════════════════════════════════════════════════════
 def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
     from snapshots import (take_snapshot, list_snapshots, get_snapshot,
@@ -1415,7 +1291,7 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
     render_tab_header("SNAPSHOTS", "Historical State Tracking",
                        "Capture current state. Compare against past states to see what changed.")
 
-    st.markdown("#### 📸 Capture Current State")
+    st.markdown("#### Capture Current State")
     c1, c2 = st.columns([3, 1])
     with c1:
         snap_label = st.text_input("Label (optional)", "",
@@ -1423,9 +1299,9 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
                                      key="snap_label_input")
     with c2:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("📸 Take Snapshot", use_container_width=True, type="primary"):
+        if st.button("Take Snapshot", use_container_width=True, type="primary"):
             snap = take_snapshot(data, cov_df, snap_label or "")
-            st.success(f"✅ Captured: {snap['label']}")
+            st.success(f"Captured: {snap['label']}")
             st.rerun()
 
     snaps = list_snapshots()
@@ -1436,7 +1312,7 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
 
     st.markdown(f"#### 📚 Saved Snapshots ({len(snaps)})")
     for snap in reversed(snaps):
-        with st.expander(f"📋 {snap['label']} — {snap['captured_at_pretty']}", expanded=False):
+        with st.expander(f"{snap['label']}, {snap['captured_at_pretty']}", expanded=False):
             state = snap["state"]
             c1, c2, c3, c4 = st.columns(4)
             with c1:
@@ -1447,7 +1323,7 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
                 st.metric("WAC", f"{state['Weighted_Avg_Cost']*100:.2f}%")
             with c4:
                 st.metric("Compliant", f"{state['Compliant']}/{state['Total_Covenants']}")
-            if st.button("🗑️ Delete", key=f"del_{snap['id']}"):
+            if st.button("Delete", key=f"del_{snap['id']}"):
                 delete_snapshot(snap["id"])
                 st.rerun()
 
@@ -1468,7 +1344,7 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
         if sa != sb:
             delta = compare_snapshots(get_snapshot(sa), get_snapshot(sb))
             if delta["changed"]:
-                st.markdown("##### 📈 Metric Changes")
+                st.markdown("##### Metric Changes")
                 rows = []
                 for c in sorted(delta["changed"], key=lambda x: -abs(x.get("pct_change", 0))):
                     arrow = "⬆️" if c["abs_change"] > 0 else "⬇️"
@@ -1481,11 +1357,11 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
                     })
                 st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
             else:
-                st.markdown("<div class='callout-good'>✅ No metric changes between these snapshots.</div>",
+                st.markdown("<div class='callout-good'>No metric changes between these snapshots.</div>",
                              unsafe_allow_html=True)
 
             if delta["covenant_changes"]:
-                st.markdown("##### 📋 Covenant Actual Changes")
+                st.markdown("##### Covenant Actual Changes")
                 rows = []
                 for c in sorted(delta["covenant_changes"], key=lambda x: -abs(x["abs_change"])):
                     arrow = "⬆️" if c["abs_change"] > 0 else "⬇️"
@@ -1515,20 +1391,20 @@ def render_tab_snapshots(data: Dict[str, Any], controls: Dict[str, Any]):
     c1, c2, c3 = st.columns(3)
     with c1:
         js = export_snapshots_to_json()
-        st.download_button("📥 Download Snapshots JSON", js,
+        st.download_button("Download Snapshots JSON", js,
                             file_name=f"jfl_snapshots_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.json",
                             mime="application/json", use_container_width=True)
     with c2:
-        uploaded = st.file_uploader("📤 Restore from JSON", type=["json"],
+        uploaded = st.file_uploader("Restore from JSON", type=["json"],
                                      key="snap_restore", label_visibility="collapsed")
         if uploaded is not None:
             try:
                 n = import_snapshots_from_json(uploaded.getvalue())
-                st.success(f"✅ Restored {n} new snapshots")
+                st.success(f"Restored {n} new snapshots")
                 st.rerun()
             except Exception as e:
                 st.error(f"Import failed: {e}")
     with c3:
-        if st.button("🗑️ Clear All Snapshots", use_container_width=True):
+        if st.button("Clear All Snapshots", use_container_width=True):
             clear_snapshots()
             st.rerun()

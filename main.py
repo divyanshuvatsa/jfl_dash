@@ -1,12 +1,8 @@
 """
-JFL Debt Monitoring Dashboard — Streamlit entry point.
+JFL Debt Monitoring Dashboard - Streamlit entry point.
 
 Run locally:        streamlit run main.py
 Cloud deployment:   point Streamlit Cloud at this file.
-
-Architecture: 5 main tabs (Overview, Covenants, Schedule, AI Analyst, Tools)
-mirrors the JCL reference dashboard architecture, adapted for JFL's
-9-lender / 5-bucket / 7-TL / dual-basis covenant structure.
 """
 
 from __future__ import annotations
@@ -20,8 +16,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        "About": "JFL Debt Monitoring Dashboard — built on the JCL reference architecture. "
-                 "Single source of truth: JFL_Debt_Model_Final.xlsx (verified — iterations 1–3 applied).",
+        "About": "JFL Debt Monitoring Dashboard.",
     },
 )
 
@@ -71,7 +66,6 @@ from dashboard_ui import (
     render_sidebar, render_header,
     render_tab_overview, render_tab_covenants,
     render_tab_repayment, render_tab_renewals,
-    render_tab_flags_and_validation,
     render_tab_ai, render_tab_export, render_tab_snapshots,
 )
 
@@ -81,54 +75,50 @@ render_header(data)
 
 # ─── 5 main tabs ───────────────────────────────────────────────────────
 tab_overview, tab_covenants, tab_schedule, tab_ai, tab_tools = st.tabs([
-    "📊 Overview",
-    "🛡️ Covenants",
-    "📅 Schedule",
-    "🤖 AI Analyst",
-    "🔧 Tools",
+    "Overview",
+    "Covenants",
+    "Schedule",
+    "AI Analyst",
+    "Tools",
 ])
 
 
-# ─── TAB 1 — Overview ──────────────────────────────────────────────────
+# ─── TAB 1 - Overview ──────────────────────────────────────────────────
 with tab_overview:
     render_tab_overview(data, controls)
 
 
-# ─── TAB 2 — Covenants ─────────────────────────────────────────────────
+# ─── TAB 2 - Covenants ─────────────────────────────────────────────────
 with tab_covenants:
     render_tab_covenants(data, controls)
 
 
-# ─── TAB 3 — Schedule (Repayment + Renewals + Flags + Validation) ─────
+# ─── TAB 3 - Schedule (Repayment + Renewals) ──────────────────────────
 with tab_schedule:
-    # Sub-nav inside the Schedule tab
     sub = st.radio("Section",
-                    ["💰 Repayment Profile",
-                     "📆 Renewals & Calendar",
-                     "🚩 Mgmt Flags & Validation"],
+                    ["Repayment Profile",
+                     "Renewals & Calendar"],
                     horizontal=True, key="schedule_subnav",
                     label_visibility="collapsed")
-    if sub == "💰 Repayment Profile":
+    if sub == "Repayment Profile":
         render_tab_repayment(data, controls)
-    elif sub == "📆 Renewals & Calendar":
-        render_tab_renewals(data, controls)
     else:
-        render_tab_flags_and_validation(data)
+        render_tab_renewals(data, controls)
 
 
-# ─── TAB 4 — AI Analyst ────────────────────────────────────────────────
+# ─── TAB 4 - AI Analyst ────────────────────────────────────────────────
 with tab_ai:
     render_tab_ai(data, controls)
 
 
-# ─── TAB 5 — Tools ─────────────────────────────────────────────────────
+# ─── TAB 5 - Tools ─────────────────────────────────────────────────────
 with tab_tools:
     sub = st.radio("Section",
-                    ["📤 Export / Reports",
-                     "📸 Historical Snapshots"],
+                    ["Export / Reports",
+                     "Snapshots"],
                     horizontal=True, key="tools_subnav",
                     label_visibility="collapsed")
-    if sub == "📤 Export / Reports":
+    if sub == "Export / Reports":
         render_tab_export(data, controls)
     else:
         render_tab_snapshots(data, controls)
@@ -139,9 +129,7 @@ import pandas as pd
 st.markdown(f"""
 <div style='margin-top:40px;padding-top:20px;border-top:1px solid #1E293B;
             text-align:center;color:#64748B;font-size:0.78rem;'>
-    JFL Debt Monitor · v12 · As-of {pd.Timestamp(data['as_of_date']).strftime('%d-%b-%Y')} ·
-    Source of truth: <code>{data['excel_path'].split('/')[-1]}</code> ·
-    Validation: {data['validation_summary'].get('Pass_Count', '—')}/{data['validation_summary'].get('Total_Checks', '—')} PASS ·
-    Confidential — Treasury / Senior Management / Audit
+    JFL Debt Monitor &middot; As of {pd.Timestamp(data['as_of_date']).strftime('%d-%b-%Y')} &middot;
+    Confidential - Treasury / Senior Management
 </div>
 """, unsafe_allow_html=True)

@@ -1,18 +1,4 @@
-"""
-Rule-based AI analyst — deterministic, zero-API answers, JFL-specific.
-
-All numbers traced to data['...'] — no hardcoded magic values.
-
-JFL-specific themes (different from JCL):
-  - Project is pre-COD (FY29 first covenant test)
-  - 9 lenders, 44 facilities
-  - 5-bucket framework (B1 / B2 / B3 / B4 / Hedge memo, plus B0 sub-limits)
-  - ICICI TL takeover ₹840 Cr → Adjusted Consortium Debt ₹3,826 Cr
-  - HSBC ₹200 Cr (post 20% haircut on ₹1,000 face) reclassified into B1 (MP-13/F-18)
-  - FY29 TEV-projected covenant compliance (43/44 Compliant + 1 Near Breach)
-  - 18 Management Flags
-  - 108-check Validation & Integrity (24 cross-source + 84 internal VJF)
-"""
+"""Pre-built JFL portfolio queries with deterministic answers drawn from the loaded data."""
 
 from __future__ import annotations
 import pandas as pd
@@ -29,7 +15,6 @@ SUGGESTED_QUESTIONS = [
     "What is the biggest lender-concentration risk?",
     "Which facilities expire in the next 90 days?",
     "Give me a 5-point summary for the board.",
-    "What are the open Management Flags?",
     "Explain the ICICI TL Takeover treatment.",
     "Why is the FY25 covenant compliance only 30%?",
     "What does the TEV project for FY29 covenants?",
@@ -70,16 +55,16 @@ def answer_biggest_risk(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     high_open = flags[(flags["Severity"].isin(["High", "Critical"])) &
                        (flags["Status"].isin(["Open", "Open (linked F-01)"]))] if len(flags) else flags
 
-    out = ["**🎯 Biggest Risks in the JFL Portfolio**\n"]
+    out = ["** Biggest Risks in the JFL Portfolio**\n"]
 
     if breached > 0:
         out.append(f"1. **{breached} covenant(s) currently breached** on FY25 audit basis. "
-                   f"This is the pre-COD reality — JFL is a greenfield project, EBITDA is still "
+                   f"This is the pre-COD reality, JFL is a greenfield project, EBITDA is still "
                    f"negative (₹{data['financials']['FY25A'].get('EBITDA', 0):.2f} Cr). "
                    f"TEV projects FY29 first-test compliance.")
 
     if top_share > 25:
-        out.append(f"2. **Lender Concentration** — {top['Lender']} holds "
+        out.append(f"2. **Lender Concentration**, {top['Lender']} holds "
                    f"**{top_share:.1f}%** ({_inr(top['Sanctioned_Debt'])}) "
                    f"of sanctioned debt {_inr(total_sd)}. UBI as consortium lead is structural; "
                    f"monitor refinancing options.")
@@ -90,13 +75,13 @@ def answer_biggest_risk(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
         thr_str = (f"{tight['Operator']} {tight['Threshold']:.2f}x"
                    if isinstance(tight['Threshold'], (int, float))
                    else f"{tight['Operator']} {tight['Threshold']}")
-        out.append(f"3. **Tightest Covenant** — {tight['Lender']} {tight['Covenant']} "
+        out.append(f"3. **Tightest Covenant**, {tight['Lender']} {tight['Covenant']} "
                    f"has **{tight['hr_pct_num']:+.1f}%** headroom (actual {actual_str} vs threshold {thr_str}).")
 
     if len(high_open) > 0:
-        out.append(f"4. **{len(high_open)} High-severity Management Flags open** — "
+        out.append(f"4. **{len(high_open)} items to watch**, "
                    f"includes {', '.join(high_open['Flag'].head(3).tolist())}. "
-                   f"See Renewals & Risk tab for full register.")
+                   f"See Renewals tab for the calendar.")
 
     # Renewal risk
     fm = data["facility_master"]
@@ -106,7 +91,7 @@ def answer_biggest_risk(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     near = fm[fm["days"].between(0, 60)]
     if len(near) > 0:
         soonest = near.loc[near["days"].idxmin()]
-        out.append(f"5. **Renewal Risk** — {soonest['Facility'][:50]} ({soonest['Lender']}) "
+        out.append(f"5. **Renewal Risk**, {soonest['Facility'][:50]} ({soonest['Lender']}) "
                    f"expires in **{int(soonest['days'])} days** ({_inr(soonest['Sanction_INR'], 0)}).")
 
     if len(out) == 1:
@@ -118,7 +103,7 @@ def answer_tightest_covenant(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     ratio_cov = cov_df.copy()
     ratio_cov["hr_pct_num"] = pd.to_numeric(ratio_cov.get("Headroom_Pct"), errors="coerce")
     sorted_cov = ratio_cov.dropna(subset=["hr_pct_num"]).sort_values("hr_pct_num").head(8)
-    out = ["**📊 Top 8 Tightest Covenants** (by headroom %)\n"]
+    out = ["** Top 8 Tightest Covenants** (by headroom %)\n"]
     out.append("| # | Lender | Covenant | Threshold | Actual | Headroom | Status |")
     out.append("|---|--------|----------|-----------|--------|----------|--------|")
     for i, (_, r) in enumerate(sorted_cov.iterrows(), 1):
@@ -143,8 +128,8 @@ def answer_wac(data: Dict[str, Any]) -> str:
             f"- Bucket 2 Commission (NFB Mains): {_inr(isum['Bucket2_Commission'])}\n"
             f"- Bucket 3 Interest (FD-Backed): {_inr(isum['Bucket3_Interest'])}\n"
             f"- **Total Economic Run-Rate (B1+B2+B3): {_inr(isum['Total_Interest_Commission'])}**\n\n"
-            f"Memo — Bucket 4 (Uncommitted) theoretical cost {_inr(isum['Bucket4_Theoretical'])}, "
-            f"but excluded as HSBC may cancel at discretion (Flag F-07).\n\n"
+            f"Memo, Bucket 4 (Uncommitted) theoretical cost {_inr(isum['Bucket4_Theoretical'])}, "
+            f"but excluded as HSBC may cancel at discretion.\n\n"
             f"WAC is computed on Bucket-1 only because that's the FB economic debt under "
             f"consortium-amortising structure. Denominator = {_inr(b1_os, 0)} effective outstanding.")
 
@@ -204,14 +189,14 @@ def answer_repayment_timeline(data: Dict[str, Any]) -> str:
     tl_total = tl.sum()
     tl_breakdown = " + ".join([f"{l} ₹{v:.0f}" for l, v in tl.sort_values(ascending=False).items()])
 
-    out = [f"**📅 JFL Term-Loan Repayment Timeline**\n"]
+    out = [f"** JFL Term-Loan Repayment Timeline**\n"]
     out.append(f"- Total TL Sanctioned: **{_inr(tl_total, 0)}** ({tl_breakdown})")
     out.append(f"- Repayment span: {fy_active['FY_Label'].iloc[0]} → {fy_active['FY_Label'].iloc[-1]}")
     out.append(f"- **Peak DS year: {peak['FY_Label']}** with {_inr(peak['Principal'])} principal "
                 f"+ {_inr(peak['Interest'])} interest = {_inr(peak['DS'])} debt service")
     out.append(f"- Total interest over loan life: {_inr(fy_agg['Interest'].sum())}")
     out.append("")
-    out.append("**RBL ₹200 Cr** is a 12-month BULLET bridge — repays at maturity (13-Nov-2026, Q3 FY27). "
+    out.append("**RBL ₹200 Cr** is a 12-month BULLET bridge, repays at maturity (13-Nov-2026, Q3 FY27). "
                 "Post-COD refinance assumed.")
     out.append("")
     out.append("**FY-wise debt service:**")
@@ -267,10 +252,10 @@ def answer_concentration(data: Dict[str, Any]) -> str:
     top_pct = top["Sanctioned_Debt"] / total_sd * 100
     out.append("")
     if top_pct > 35:
-        out.append(f"⚠️ **{top['Lender']} concentration ({top_pct:.1f}%) is structural** — "
+        out.append(f" **{top['Lender']} concentration ({top_pct:.1f}%) is structural**, "
                     "consortium lead. ICICI TL takeover (₹840 Cr) adds a parallel exposure stack.")
     else:
-        out.append(f"✅ Concentration well-distributed; largest lender at {top_pct:.1f}%.")
+        out.append(f" Concentration well-distributed; largest lender at {top_pct:.1f}%.")
 
     out.append("\n**ICICI TL Takeover treatment:**")
     out.append(f"- Sanctioned (gross) B1+B2 = {_inr(total_sd)}")
@@ -320,11 +305,11 @@ def answer_board_summary(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     open_flags = flags[flags["Status"].isin(["Open", "Open (linked F-01)"])] if len(flags) else flags
     high_open = len(open_flags[open_flags["Severity"].isin(["High", "Critical"])]) if len(open_flags) else 0
 
-    out = [f"**📋 JFL Debt Portfolio — 5-Point Board Summary**\n"]
+    out = [f"**📋 JFL Debt Portfolio, 5-Point Board Summary**\n"]
     out.append(f"1. **Sanctioned Debt** = {_inr(t['Bucket1_Sanctioned_Debt'])} (B1 FB Mains "
                 f"{_inr(t['FB_Mains_B1'], 0)} + B2 NFB Mains {_inr(t['NFB_Mains_B2'], 0)}) across "
                 f"9 lenders, {fm_count} facilities. HSBC ₹200 Cr (post 20% haircut on ₹1,000 face) "
-                f"reclassified into B1 per MP-13/F-18. "
+                f"reclassified into B1 after a 20% haircut. "
                 f"ICICI TL takeover ₹840 Cr → "
                 f"**Adjusted Consortium Debt {_inr(t['Adjusted_Consortium'])}**.")
     out.append(f"2. **Annual Run-Rate** = {_inr(isum['Total_Interest_Commission'])} at "
@@ -336,55 +321,27 @@ def answer_board_summary(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     out.append(f"4. **Term Loans**: 7 TLs totalling ₹3,816 Cr sanctioned. "
                 f"Repayments start FY27, peak ~FY30-FY38 at ₹325 Cr/yr principal. "
                 f"RBL ₹200 Cr bullet matures Nov-2026.")
-    out.append(f"5. **Watch Items**: {len(open_flags)} Management Flags open "
+    out.append(f"5. **Watch Items**: {len(open_flags)} items being tracked "
                 f"({high_open} High severity). Top concentration: {top['Lender']} at "
                 f"{top['Sanctioned_Debt']/t['Bucket1_Sanctioned_Debt']*100:.1f}%.")
-    return "\n".join(out)
-
-
-def answer_management_flags(data: Dict[str, Any]) -> str:
-    flags = data.get("management_flags", pd.DataFrame())
-    if flags.empty:
-        return "No Management Flags loaded."
-
-    open_flags = flags[flags["Status"].isin(["Open", "Open (linked F-01)"])]
-    sev_order = {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}
-    open_flags = open_flags.copy()
-    open_flags["_sev"] = open_flags["Severity"].map(sev_order).fillna(99)
-    open_flags = open_flags.sort_values("_sev")
-
-    out = [f"**🚩 JFL Management Flags Register**\n"]
-    out.append(f"- Total flags: {len(flags)}")
-    out.append(f"- Open: {len(open_flags)}")
-    out.append(f"- Closed: {(flags['Status'] == 'Closed').sum()}")
-    out.append(f"- Acceptable: {(flags['Status'] == 'Acceptable').sum()}")
-    out.append("")
-
-    out.append("**Open flags (by severity):**\n")
-    for _, f in open_flags.iterrows():
-        sev = f["Severity"]
-        emoji = {"Critical": "🚨", "High": "🔴", "Medium": "🟠", "Low": "🟡"}.get(sev, "⚪")
-        out.append(f"- {emoji} **{f['Flag']}** [{sev}] — {f['Description'][:140]}…")
-        out.append(f"  *Action:* {f['Action'][:140]}")
     return "\n".join(out)
 
 
 def answer_icici_takeover(data: Dict[str, Any]) -> str:
     t = data["totals"]
     return (
-        f"**🔄 ICICI TL Takeover — Treatment in the JFL Model**\n\n"
-        f"ICICI ₹{t['ICICI_TL_Takeover']:.0f} Cr is a **takeover of already-disbursed consortium TL** — "
+        f"**🔄 ICICI TL Takeover, Treatment in the JFL Model**\n\n"
+        f"ICICI ₹{t['ICICI_TL_Takeover']:.0f} Cr is a **takeover of already-disbursed consortium TL**, "
         f"it economically *substitutes* for existing UBI / Indian Bank / YBL / IDFC exposure rather than "
         f"adding new debt. Per ICICI TL CAL 27-Mar-2026, specific takeover-target lender(s) are not "
-        f"identified in the CAL (Treasury flag F-01 / Cover Page note).\n\n"
+        f"identified in the sanction letter.\n\n"
         f"**Accounting in the dashboard:**\n"
         f"- Headline **Sanctioned Debt = B1 + B2 = {_inr(t['Bucket1_Sanctioned_Debt'])}** (gross of takeover)\n"
         f"- less: ICICI TL takeover = ({_inr(t['ICICI_TL_Takeover'])})\n"
-        f"- **Adjusted Consortium Debt = {_inr(t['Adjusted_Consortium'])}** — economic representation\n\n"
+        f"- **Adjusted Consortium Debt = {_inr(t['Adjusted_Consortium'])}**, economic representation\n\n"
         f"The KPI labelled 'Adjusted Consortium' is what matters for credit-committee purposes; the "
         f"₹4,666 Cr 'Sanctioned' figure is what sums to all signed facility letters (incl. HSBC "
-        f"₹200 Cr post 20% haircut, reclassified to B1 per MP-13/F-18). Validation Engine "
-        f"check VJF-18 / VJF-19 enforce this reconciliation."
+        f"₹200 Cr post 20% haircut, reclassified to B1)."
     )
 
 
@@ -392,15 +349,15 @@ def answer_fy25_breaches(data: Dict[str, Any]) -> str:
     fy25 = data["financials"]["FY25A"]
     return (
         f"**Why FY25 Covenant Compliance is ~30%**\n\n"
-        f"JFL is a **pre-operational greenfield steel project** at FY25 — DCCO is "
+        f"JFL is a **pre-operational greenfield steel project** at FY25, DCCO is "
         f"01-Apr-2026 (consortium-aligned). At FY25 balance-sheet date:\n\n"
         f"- EBITDA = **{_inr(fy25.get('EBITDA', 0))}** (continuing PBT loss + discontinued Lime Plant)\n"
         f"- Fixed Assets dominated by CWIP **{_inr(fy25.get('Fixed Assets', 0))}** (project capex)\n"
-        f"- Interest **capitalised** to CWIP (Ind AS 23) — economic interest burden {_inr(fy25.get('Interest Expense', 0))}\n"
-        f"- TL repayments start FY27 — no principal due during FY25\n\n"
+        f"- Interest **capitalised** to CWIP (Ind AS 23), economic interest burden {_inr(fy25.get('Interest Expense', 0))}\n"
+        f"- TL repayments start FY27, no principal due during FY25\n\n"
         f"All consortium covenants (DSCR ≥ 1.25, ISCR ≥ 2.00, LTD/EBITDA ≤ 4.00) are tested "
         f"**from FY29 onwards** (post-COD), so the FY25 breaches are structural, not a credit concern.\n\n"
-        f"The **TEV-projected FY29** view (see Covenants tab toggle) shows **43/44 compliant** — "
+        f"The **TEV-projected FY29** view (see Covenants tab toggle) shows **43/44 compliant**, "
         f"the model substitutes audit numbers with TEV projections once the plant is operational."
     )
 
@@ -410,7 +367,7 @@ def answer_tev_forward(data: Dict[str, Any]) -> str:
     if not tev or "FY29" not in tev:
         return "TEV trajectory not available."
 
-    out = ["**📊 TEV-Projected Covenant Ratios — FY27 to FY38**\n"]
+    out = ["** TEV-Projected Covenant Ratios, FY27 to FY38**\n"]
     out.append("| FY | DSCR | ISCR | FACR | LTD/EBITDA | LTD/Equity |")
     out.append("|----|------|------|------|------------|------------|")
     for fy in sorted(tev.keys()):
@@ -432,16 +389,16 @@ def answer_tev_forward(data: Dict[str, Any]) -> str:
 
 def answer_rbl_bullet(data: Dict[str, Any]) -> str:
     return (
-        f"**🌉 RBL Bank ₹200 Cr Bullet Bridge — Status**\n\n"
+        f"**🌉 RBL Bank ₹200 Cr Bullet Bridge, Status**\n\n"
         f"Per RBL SL 13-Nov-2025:\n"
         f"- Sanctioned: ₹200 Cr\n"
         f"- Structure: 12-month BULLET (not consortium amortising)\n"
         f"- Maturity: **13-Nov-2026** (Q3 FY27)\n"
-        f"- Rate: 9.50% (TBD at disbursement — Flag F-06)\n"
+        f"- Rate: 9.50% (TBD at disbursement)\n"
         f"- Security: Unsecured TL backed by OPJSTPL Corporate Guarantee + JSL Shortfall Undertaking\n"
         f"- Covenants: Min promoter contribution ₹1,363 Cr + Min BBB rating within 180 days\n\n"
-        f"**Treasury action required**: Refinance plan or rollover arrangement with RBL — "
-        f"flagged as **F-02 (High severity, Open)**. The model assumes bullet repayment at maturity; "
+        f"**Treasury action required**: Refinance plan or rollover arrangement with RBL, "
+        f"a high-severity refinance event. The model assumes bullet repayment at maturity; "
         f"post-COD refinance is assumed (likely consortium take-out or RBL renewal). "
         f"This fundamentally differs from the rest of the term-loan stack which amortises over 12 years."
     )
@@ -456,7 +413,7 @@ def answer_pre_review(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     high = flags[(flags["Severity"].isin(["High", "Critical"])) &
                   (flags["Status"].isin(["Open", "Open (linked F-01)"]))] if len(flags) else flags
     for _, f in high.iterrows():
-        items.append(f"**HIGH** — Address **{f['Flag']}**: {f['Description'][:120]}")
+        items.append(f"**HIGH**, Address **{f['Flag']}**: {f['Description'][:120]}")
 
     # Renewals next 60 days
     fm = data["facility_master"].copy()
@@ -464,19 +421,19 @@ def answer_pre_review(data: Dict[str, Any], cov_df: pd.DataFrame) -> str:
     fm["days"] = (fm["Validity_Date"] - as_of).dt.days
     soon = fm[fm["days"].between(0, 60)]
     if len(soon) > 0:
-        items.append(f"**MEDIUM** — Initiate renewal for {len(soon)} facilities expiring in 60 days "
+        items.append(f"**MEDIUM**, Initiate renewal for {len(soon)} facilities expiring in 60 days "
                       f"(combined {_inr(soon['Sanction_INR'].sum())}).")
 
     # Pending Input covenants (e.g. ratings to confirm)
     pending = cov_df[cov_df["Status"] == "Pending Input"]
     if len(pending) > 0:
-        items.append(f"**MEDIUM** — Resolve {len(pending)} 'Pending Input' covenants — typically "
+        items.append(f"**MEDIUM**, Resolve {len(pending)} 'Pending Input' covenants, typically "
                       f"awaiting external rating or market-data updates (JSL FMV, etc.).")
 
     # TBD rates
     tbd = fm[fm["Benchmark"].isin(["To be decided", "Mutually agreed"])]
     if len(tbd) > 0:
-        items.append(f"**LOW** — Confirm rates for {len(tbd)} TBD-rate facilities at next availment.")
+        items.append(f"**LOW**, Confirm rates for {len(tbd)} TBD-rate facilities at next availment.")
 
     if not items:
         items.append("No urgent action items. Continue regular monitoring.")
@@ -499,7 +456,7 @@ def get_proactive_insights(data: Dict[str, Any], cov_df: pd.DataFrame) -> List[D
     top_pct = top["Sanctioned_Debt"] / t["Bucket1_Sanctioned_Debt"] * 100
     insights.append({
         "icon": "🏦", "level": "info",
-        "title": f"Lender Concentration — {top['Lender']}",
+        "title": f"Lender Concentration, {top['Lender']}",
         "body": f"<b>{top['Lender']}</b> at <b>{top_pct:.1f}%</b> of sanctioned debt "
                 f"({_inr(top['Sanctioned_Debt'])}). As consortium lead this is structural; "
                 f"ICICI TL takeover ₹840 Cr is a parallel exposure stack."
@@ -534,8 +491,8 @@ def get_proactive_insights(data: Dict[str, Any], cov_df: pd.DataFrame) -> List[D
         thr_str = (f"{tight['Operator']}{tight['Threshold']:.2f}x"
                    if isinstance(tight['Threshold'], (int, float)) else str(tight['Threshold']))
         insights.append({
-            "icon": "🎯", "level": level,
-            "title": f"Tightest Covenant — {tight['Lender']}",
+            "icon": "", "level": level,
+            "title": f"Tightest Covenant, {tight['Lender']}",
             "body": f"<b>{tight['Covenant'][:60]}</b> at <b>{tight['hr_pct_num']:+.1f}%</b> headroom. "
                     f"Actual {actual_str} vs {thr_str}."
         })
@@ -546,7 +503,7 @@ def get_proactive_insights(data: Dict[str, Any], cov_df: pd.DataFrame) -> List[D
                        (flags["Status"].isin(["Open", "Open (linked F-01)"]))] if len(flags) else flags
     if len(high_open) > 0:
         insights.append({
-            "icon": "🚨", "level": "warning",
+            "icon": "", "level": "warning",
             "title": f"{len(high_open)} High-Severity Flags Open",
             "body": "Includes " + ", ".join([f"<b>{f}</b>" for f in high_open['Flag'].head(3).tolist()])
                     + ". See Renewals & Risk tab for full register."
@@ -568,7 +525,6 @@ KEYWORD_MAP = [
     (("concentration", "lender mix", "diversification"), answer_concentration),
     (("renewal", "expiry", "expire", "validity"), answer_renewals),
     (("board", "summary", "5-point", "5 point"), answer_board_summary),
-    (("flag", "management flag", "f-0", "watch item"), answer_management_flags),
     (("icici takeover", "takeover", "icici tl", "adjusted consortium"),
      answer_icici_takeover),
     (("fy25", "audit", "why is", "30%", "compliance"), answer_fy25_breaches),
