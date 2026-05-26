@@ -22,10 +22,13 @@ from theme import LENDER_COLORS, STATUS_COLORS
 # ════════════════════════════════════════════════════════════════════
 # SHARED STYLE CONSTANTS, JFL Dashboard Polish (May 2026)
 # ════════════════════════════════════════════════════════════════════
-BG_DARK       = "#0F172A"   # slate-900, primary background
-BG_PANEL      = "#1E293B"   # slate-800, chart inner panel
-GRID          = "rgba(148,163,184,0.12)"  # slate-400 @ 12%, subtle gridlines
-AXIS          = "rgba(148,163,184,0.35)"  # slate-400 @ 35%, axis lines
+# Page wrapper is bg #0B1426; chart panel sits on it as a lifted card with
+# a slightly lighter inner panel (#101A30) — gives every chart a visible
+# frame without needing extra HTML wrappers in every render call.
+BG_DARK       = "#101A30"   # chart panel inner (sits ON page #0B1426)
+BG_PANEL      = "#1E293B"   # hover label background
+GRID          = "rgba(148,163,184,0.10)"  # softer gridlines
+AXIS          = "rgba(148,163,184,0.30)"  # axis lines
 TEXT_PRIMARY  = "#F1F5F9"   # slate-100, main text
 TEXT_MUTED    = "#94A3B8"   # slate-400, secondary text
 TEXT_DIM      = "#64748B"   # slate-500, tertiary
@@ -52,12 +55,19 @@ def _common_layout(height: int = 420, *,
                    title: str = "",
                    show_legend: bool = True,
                    legend_orientation: str = "h",
+                   legend_position: str = "bottom",   # NEW: "bottom" | "top" | "right"
                    margin_t: int = 60,
-                   margin_b: int = 60) -> dict:
+                   margin_b: int = 100,               # ↑ from 60 to 100, accommodates legend + axis title
+                   margin_l: int = 60,
+                   margin_r: int = 30) -> dict:
     """Standard layout kwargs every chart in the suite uses.
 
     Ensures consistent dark theme, gridlines, font, margins, and legend
     positioning across all 9 charts. Pass into fig.update_layout(**kwargs).
+
+    margin_b default raised from 60 → 100 so a horizontal legend at the
+    bottom plus an axis title no longer collide. Charts that need extra
+    room (e.g. stacked bars with footer notes) can pass margin_b=120+.
     """
     layout = {
         "height": height,
@@ -67,22 +77,32 @@ def _common_layout(height: int = 420, *,
                      size=12),
         "title": dict(text=title, x=0.02, xanchor="left", y=0.98, yanchor="top",
                       font=dict(size=15, color=TEXT_PRIMARY, family="Inter")) if title else None,
-        "margin": dict(l=60, r=30, t=margin_t, b=margin_b),
+        "margin": dict(l=margin_l, r=margin_r, t=margin_t, b=margin_b),
         "hoverlabel": dict(bgcolor=BG_PANEL, bordercolor=PALETTE["primary"],
                            font=dict(color=TEXT_PRIMARY, size=12, family="Inter")),
         "xaxis": dict(gridcolor=GRID, zerolinecolor=AXIS, linecolor=AXIS,
                       tickfont=dict(color=TEXT_MUTED, size=11),
-                      title_font=dict(color=TEXT_MUTED, size=12)),
+                      title_font=dict(color=TEXT_MUTED, size=12),
+                      title_standoff=18),
         "yaxis": dict(gridcolor=GRID, zerolinecolor=AXIS, linecolor=AXIS,
                       tickfont=dict(color=TEXT_MUTED, size=11),
-                      title_font=dict(color=TEXT_MUTED, size=12)),
+                      title_font=dict(color=TEXT_MUTED, size=12),
+                      title_standoff=12),
     }
     if show_legend:
         if legend_orientation == "h":
-            layout["legend"] = dict(orientation="h", yanchor="bottom", y=-0.22,
-                                     xanchor="center", x=0.5,
-                                     font=dict(color=TEXT_PRIMARY, size=11),
-                                     bgcolor="rgba(0,0,0,0)")
+            if legend_position == "top":
+                # Above the plot area — good for stacked bars / multi-series
+                layout["legend"] = dict(orientation="h", yanchor="bottom", y=1.04,
+                                         xanchor="center", x=0.5,
+                                         font=dict(color=TEXT_PRIMARY, size=11),
+                                         bgcolor="rgba(0,0,0,0)")
+            else:
+                # Below the plot area, generously offset so axis title is clear
+                layout["legend"] = dict(orientation="h", yanchor="top", y=-0.28,
+                                         xanchor="center", x=0.5,
+                                         font=dict(color=TEXT_PRIMARY, size=11),
+                                         bgcolor="rgba(0,0,0,0)")
         else:
             layout["legend"] = dict(orientation="v", yanchor="top", y=1,
                                      xanchor="left", x=1.02,
@@ -167,10 +187,11 @@ def render_covenant_headroom_chart(cov_df: pd.DataFrame, *, mode: str = "tightes
 
     fig.update_layout(
         **_common_layout(height=max(420, 32 * len(df)), show_legend=False,
-                         margin_t=30, margin_b=50),
+                         margin_t=30, margin_b=70),
     )
     fig.update_xaxes(
-        title="Headroom % (positive = compliant, negative = breach)",
+        title=dict(text="Headroom % (positive = compliant, negative = breach)",
+                   standoff=14),
         range=[-110, CAP + 30],
     )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
@@ -267,10 +288,11 @@ def render_facility_cost_chart(data: Dict[str, Any]):
     ))
     fig.update_layout(
         **_common_layout(height=max(400, 24 * len(df)), show_legend=False,
-                         margin_t=30, margin_b=50),
+                         margin_t=30, margin_b=70),
     )
     fig.update_xaxes(
-        title=f"Annual Cost Contribution (₹ Cr)  ·  total ≈ ₹{total_cost:.1f} Cr",
+        title=dict(text=f"Annual Cost Contribution (₹ Cr)  ·  total ≈ ₹{total_cost:.1f} Cr",
+                   standoff=14),
     )
     fig.update_yaxes(autorange="reversed")
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
@@ -333,9 +355,12 @@ def render_fb_rate_vs_wac_chart(data: Dict[str, Any]):
     )
     fig.update_layout(
         **_common_layout(height=max(320, 28 * len(fm)), show_legend=False,
-                         margin_t=30, margin_b=50),
+                         margin_t=30, margin_b=70),
     )
-    fig.update_xaxes(title="Effective Interest Rate (%)  ·  fund-based facilities only")
+    fig.update_xaxes(
+        title=dict(text="Effective Interest Rate (%)  ·  fund-based facilities only",
+                   standoff=14),
+    )
     fig.update_yaxes(autorange="reversed")
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
@@ -401,35 +426,43 @@ def render_lender_composition_stacked(data: Dict[str, Any]):
 
     totals = pivot.sum(axis=1)
     grand = totals.sum()
+    # Only annotate the per-lender total OUTSIDE the bar when the lender has
+    # 2+ visible segments — otherwise the inside label already says the same
+    # number and we get visual redundancy (e.g. UBI ₹1,361 inside + ₹1,361 outside).
+    segment_counts = (pivot > 0).sum(axis=1)
     for lender, total in totals.items():
-        fig.add_annotation(
-            x=total + grand * 0.012, y=lender, text=f"<b>₹{total:.0f}</b>",
-            showarrow=False, font=dict(color=TEXT_PRIMARY, size=12, family="Inter"),
-            xanchor="left",
-        )
+        if segment_counts[lender] >= 2:
+            fig.add_annotation(
+                x=total + grand * 0.012, y=lender, text=f"<b>₹{total:.0f}</b>",
+                showarrow=False, font=dict(color=TEXT_PRIMARY, size=12, family="Inter"),
+                xanchor="left",
+            )
 
     fig.update_layout(
         barmode="stack",
-        **_common_layout(height=max(360, 40 * len(pivot)),
-                         margin_t=30, margin_b=90),
+        **_common_layout(height=max(380, 42 * len(pivot)),
+                         margin_t=40, margin_b=80,
+                         legend_position="top"),  # legend ABOVE plot — keeps bottom clean
     )
-    # Clean, single-line x-axis title (avoid mid-dot + ₹ font-fallback glitch
-    # that was rendering the title overlapped/garbled).
     fig.update_xaxes(
-        title=dict(text="Sanctioned Capacity (Rs Cr)",
-                   font=dict(size=12, family="Inter", color=TEXT_PRIMARY)),
+        title=dict(text="Sanctioned Capacity (₹ Cr)",
+                   font=dict(size=12, family="Inter", color=TEXT_MUTED)),
         range=[0, totals.max() * 1.22],
     )
     fig.update_yaxes(autorange="reversed")
-    # Footer note (total tie-out) placed below x-axis as a paper annotation;
-    # keeps the axis title clean and avoids the font-rendering collision.
-    fig.add_annotation(
-        text=f"Total ties to Rs {grand:,.0f} Cr Sanctioned Debt (B1 + B2)",
-        xref="paper", yref="paper", x=0.5, y=-0.18,
-        showarrow=False, xanchor="center",
-        font=dict(size=11, family="Inter", color=TEXT_PRIMARY),
-    )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+
+    # Footer tie-out moved OUT of the figure into a Streamlit caption so it
+    # can never collide with axis title or legend.
+    st.markdown(
+        f"<div style='text-align:center;font-size:0.82rem;color:{TEXT_MUTED};"
+        f"margin-top:-8px;'>"
+        f"Bars sum to <b style='color:{TEXT_PRIMARY}'>₹{grand:,.0f} Cr</b> Sanctioned Debt (B1 + B2).  "
+        f"<span style='color:{TEXT_DIM}'>HSBC ₹200 Cr shown as NFB (CAL category) but "
+        f"reclassified to Bucket 1 post-haircut in headline totals.</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -481,10 +514,10 @@ def render_repayment_timeline(data: Dict[str, Any]):
         ))
 
     fig.update_layout(
-        **_common_layout(height=460, margin_t=30, margin_b=80),
+        **_common_layout(height=460, margin_t=40, margin_b=110),
     )
-    fig.update_xaxes(title="Financial Year-End", tickangle=-30)
-    fig.update_yaxes(title="Term Loan Outstanding (₹ Cr)")
+    fig.update_xaxes(title=dict(text="Financial Year-End", standoff=14), tickangle=-30)
+    fig.update_yaxes(title=dict(text="Term Loan Outstanding (₹ Cr)", standoff=10))
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
@@ -548,10 +581,10 @@ def render_renewal_timeline(data: Dict[str, Any]):
 
     fig.update_layout(
         **_common_layout(height=max(460, 24 * len(fm)), show_legend=False,
-                         margin_t=30, margin_b=60),
+                         margin_t=30, margin_b=80),
     )
     fig.update_xaxes(
-        title="Days to Expiry (negative = overdue)",
+        title=dict(text="Days to Expiry (negative = overdue)", standoff=14),
         range=[-40, max(200, fm["days"].max() + 60)],
     )
     fig.update_yaxes(autorange="reversed")
@@ -618,9 +651,9 @@ def render_tev_trajectory(data: Dict[str, Any]):
                                    borderwidth=1, borderpad=3))
 
     fig.update_layout(
-        **_common_layout(height=440, margin_t=30, margin_b=80),
+        **_common_layout(height=440, margin_t=40, margin_b=110),
     )
-    fig.update_yaxes(title="Ratio (x)", range=[0, 7])
+    fig.update_yaxes(title=dict(text="Ratio (×)", standoff=10), range=[0, 7])
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
@@ -726,7 +759,7 @@ def render_scenario_comparison_chart(base: Dict, stress: Dict, basis: str):
     ))
     fig.update_layout(
         barmode="group",
-        **_common_layout(height=420, margin_t=30, margin_b=70),
+        **_common_layout(height=420, margin_t=50, margin_b=100),
     )
-    fig.update_yaxes(title="Ratio (x)")
+    fig.update_yaxes(title=dict(text="Ratio (×)", standoff=10))
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
