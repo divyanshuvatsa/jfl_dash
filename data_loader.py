@@ -450,17 +450,29 @@ def load_excel(signature: str, path_str: str) -> Dict[str, Any]:
         })
     out["lender_bucket2"] = pd.DataFrame(bucket2_compat)
 
-    # Section C: FD-Backed (Bucket 3) - rows 32-40
+    # Section C: FD-Backed (Bucket 3)
+    # Verified Excel layout:
+    #   Row 30: "C. FD-BACKED (BUCKET 3) ..." section header
+    #   Row 31: header (Lender | FD-Backed | % Share)
+    #   Row 32: RBL Bank   100  0.667  -> iloc[31]
+    #   Row 33: HDFC Bank   50  0.333  -> iloc[32]
+    #   Row 34: Grand Total 150 1      -> iloc[33]  (skip)
+    # Iterate iloc[31..32] only. Defensive: stop on blank or "Grand Total".
     fd_records = []
-    for i in range(32, 41):
-        if pd.notna(ls.iloc[i, 0]) and str(ls.iloc[i, 0]) not in ("Grand Total (FD-Backed)",):
-            fd_records.append({
-                "Lender": str(ls.iloc[i, 0]),
-                "FD_Backed": _safe_float(ls.iloc[i, 1]),
-                "Hedge_Notional": 0.0,
-                "Bucket3_Total": _safe_float(ls.iloc[i, 1]),
-                "Pct_FD": _safe_float(ls.iloc[i, 2]),
-            })
+    for i in range(31, 33):
+        val = ls.iloc[i, 0]
+        if pd.isna(val):
+            break
+        name = str(val).strip()
+        if name in ("Grand Total", "Grand Total (FD-Backed)"):
+            break
+        fd_records.append({
+            "Lender": name,
+            "FD_Backed": _safe_float(ls.iloc[i, 1]),
+            "Hedge_Notional": 0.0,
+            "Bucket3_Total": _safe_float(ls.iloc[i, 1]),
+            "Pct_FD": _safe_float(ls.iloc[i, 2]),
+        })
     out["lender_bucket3"] = pd.DataFrame(fd_records)
 
     # Section B: Key KPIs (used as ground truth for totals)

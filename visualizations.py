@@ -411,13 +411,24 @@ def render_lender_composition_stacked(data: Dict[str, Any]):
     fig.update_layout(
         barmode="stack",
         **_common_layout(height=max(360, 40 * len(pivot)),
-                         margin_t=30, margin_b=80),
+                         margin_t=30, margin_b=90),
     )
+    # Clean, single-line x-axis title (avoid mid-dot + ₹ font-fallback glitch
+    # that was rendering the title overlapped/garbled).
     fig.update_xaxes(
-        title=f"Sanctioned Capacity (₹ Cr)  ·  total ties to ₹{grand:,.0f} Cr",
+        title=dict(text="Sanctioned Capacity (Rs Cr)",
+                   font=dict(size=12, family="Inter", color=TEXT_PRIMARY)),
         range=[0, totals.max() * 1.22],
     )
     fig.update_yaxes(autorange="reversed")
+    # Footer note (total tie-out) placed below x-axis as a paper annotation;
+    # keeps the axis title clean and avoids the font-rendering collision.
+    fig.add_annotation(
+        text=f"Total ties to Rs {grand:,.0f} Cr Sanctioned Debt (B1 + B2)",
+        xref="paper", yref="paper", x=0.5, y=-0.18,
+        showarrow=False, xanchor="center",
+        font=dict(size=11, family="Inter", color=TEXT_PRIMARY),
+    )
     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
 
